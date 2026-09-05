@@ -95,6 +95,13 @@ func autostartBundlePath() string {
 // runningInsideBundle reports whether this process was started from the bundle
 // above. That is how the two roles tell themselves apart: the LaunchAgent copy
 // only looks at interfaces, the bundle copy does the network work.
+// autostartBundleExe is the gpget copy inside the bundle. Only that one has
+// bundle identity, so only it can post through UserNotifications or reach the
+// camera under Local Network privacy.
+func autostartBundleExe() string {
+	return filepath.Join(autostartBundlePath(), "Contents", "MacOS", "gpget")
+}
+
 func runningInsideBundle() bool {
 	exe, err := os.Executable()
 	if err != nil {
@@ -355,7 +362,7 @@ func autostartInstall(exe string) (string, error) {
 	// than `open`ing the app. AssociatedBundleIdentifiers in the plist ties that
 	// process to the bundle, which is what grants local-network access on the
 	// first try (without it, the first connection after install is refused).
-	bundleExe := filepath.Join(autostartBundlePath(), "Contents", "MacOS", "gpget")
+	bundleExe := autostartBundleExe()
 	p := launchAgentPath()
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return "", err
@@ -388,7 +395,7 @@ Log file:              %s`, p, testNotifyReport(ok), autostartBundlePath(), laun
 // banner would silently not fire. Stdio is the log file, not the install TTY:
 // otherwise test-notify would skip fd redirect and the log would miss [notify:].
 func sendInstallTestNotify() bool {
-	exe := filepath.Join(autostartBundlePath(), "Contents", "MacOS", "gpget")
+	exe := autostartBundleExe()
 	cmd := exec.Command(exe, "autostart", "test-notify")
 	if f := openAutostartLog(); f != nil {
 		defer f.Close()

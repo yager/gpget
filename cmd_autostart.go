@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -66,6 +67,14 @@ func cmdAutostart(ctx context.Context, args []string) error {
 
 	case "test-notify":
 		autostartRedirectLog()
+		// Only the copy inside the .app bundle can post through
+		// UserNotifications; the one on PATH has no bundle identity and falls
+		// back to a channel macOS often drops. Say so rather than reporting a
+		// result that means nothing.
+		if runtime.GOOS == "darwin" && !autostartTriggered() {
+			fmt.Printf("this binary is not the bundled one, so it cannot post a real notification.\nrun the bundled copy instead:\n  %q autostart test-notify\n",
+				autostartBundleExe())
+		}
 		via := notify.Via("gpget: test notification", "If you can see this, transfer results will reach you too.")
 		if via == "" {
 			return fmt.Errorf("could not send the test notification")
@@ -266,6 +275,9 @@ func destBusy(cfgPath string) bool {
 func testNotifyReport(ok bool) string {
 	if ok {
 		return "A test notification was sent. If no banner appeared, turn gpget on in\nSystem Settings > Notifications (without it you cannot see the result)."
+	}
+	if runtime.GOOS == "darwin" {
+		return fmt.Sprintf("The test notification could not be sent.\nTo check by hand, run the bundled copy (not the one on PATH):\n  %q autostart test-notify", autostartBundleExe())
 	}
 	return "The test notification could not be sent.\nRun `gpget autostart test-notify` in a terminal to check."
 }

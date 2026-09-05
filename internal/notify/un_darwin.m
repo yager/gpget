@@ -32,6 +32,20 @@ static BOOL pump(volatile BOOL *done, double seconds) {
 int gpgetNotifyNative(const char *cid, const char *ctitle, const char *cbody) {
     @autoreleasepool {
         @try {
+            // currentNotificationCenter raises NSInternalInconsistencyException
+            // when the process has no bundle identity, and the raise happens
+            // inside a dispatch_once block. libdispatch does not let exceptions
+            // unwind through its callouts, so it calls terminate() and the
+            // @catch below never runs -- the process dies. Observed on a fresh
+            // account running the bare binary: "bundleProxyForCurrentProcess is
+            // nil". The only safe move is not to call it at all.
+            NSString *bundleID = [[NSBundle mainBundle] bundleIdentifier];
+            if (bundleID == nil) {
+                fprintf(stderr, "[un] not running from an app bundle; "
+                                "UserNotifications is unavailable here\n");
+                return 0;
+            }
+
             UNUserNotificationCenter *c = [UNUserNotificationCenter currentNotificationCenter];
             if (c == nil) { fprintf(stderr, "[un] no notification center\n"); return 0; }
 

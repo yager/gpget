@@ -130,3 +130,6 @@ func autostartTriggered() bool { return false }
 func autostartAgent(_ context.Context, _ string) error {
 	return errors.New("autostart agent is not supported on this platform")
 }
+
+// autostartBundleExe has no meaning off macOS; there is no app bundle.
+func autostartBundleExe() string { return "gpget" }
