@@ -100,7 +100,7 @@ Go 1.21 以降が必要です。macOS では cgo(通知と USB 監視)を使う�
 **Windows と Linux は自動起動を実機検証できていません。**手動の `sync` / `get` は
 同じコードを通りますが、`autostart` は未検証です。試された方は
 [Issues](https://github.com/yager/gpget/issues) で結果を教えていただけると助かります
-(手順は [docs/testing.md](docs/testing.md))。
+(手順は [docs/testing.ja.md](docs/testing.ja.md))。
 
 ---
 
@@ -372,7 +372,7 @@ gpget sync         # 再実行すれば続きから再開する
 | [docs/design.md](docs/design.md) | なぜ自作か、やること / やらないこと、機能要件、安全モデル |
 | [docs/gopro-api.md](docs/gopro-api.md) | GoPro ローカル API の仕様と ILS 実測、TODO |
 | [docs/status.md](docs/status.md) | 実装状況・実機検証・未着手 |
-| [docs/testing.md](docs/testing.md) | Windows / Linux での動作確認をお願いする手順と、報告の方法 |
+| [docs/testing.ja.md](docs/testing.ja.md) | Windows / Linux での動作確認をお願いする手順と、報告の方法 |
 | [docs/release.md](docs/release.md) | ビルドとリリースの手順(メンテナ向け) |
 | [tools/probe_group.py](tools/probe_group.py) | カメラの API 仕様を実測で確認するスクリプト |
 

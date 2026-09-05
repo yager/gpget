@@ -2,7 +2,7 @@ blank_issues_enabled: true
 contact_links:
   - name: How to test on Windows / Linux
     url: https://github.com/yager/gpget/blob/main/docs/testing.md
-    about: Install steps, what to try, and what to include in a report (日本語)
+    about: Install steps, what to try, and what to include in a report
   - name: Report a security issue privately
     url: https://github.com/yager/gpget/security/advisories/new
     about: Please do not open a public issue for security problems

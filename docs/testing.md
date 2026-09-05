@@ -1,22 +1,26 @@
-# テストのお願い（Windows / Linux）
+# Testing gpget on Windows or Linux
 
-gpget は、GoPro を USB でつないで写真・動画を PC に取り込むコマンドです。
-**Windows と Linux では一度も動かせていません。**開発は Mac で行っていて、
-手元に確認できる環境がありません。そこをお願いしたい、という文書です。
+**English** | [日本語](testing.ja.md)
 
-うまく動かなくても構いません。**動かなかったという報告そのものが目的**です。
+gpget copies photos and videos off a GoPro over USB.
+**It has never been run on a real Windows or Linux machine.** Development
+happens on a Mac and there is no other hardware here to check against — which is
+what this document is asking for help with.
 
-- 所要時間: 15〜30分程度
-- 必要なもの: GoPro(USB でつなげるもの)、USB ケーブル、空き容量
-- **カメラの中身は一切変更しません。**読み取り専用で、削除もしません
+It is fine if it does not work. **A report that it did not work is exactly what
+is useful.**
+
+- Takes 15–30 minutes
+- You need a GoPro you can connect over USB, a cable, and some free disk space
+- **Nothing on the camera is modified.** gpget is strictly read-only and never deletes
 
 ---
 
-## 1. インストール
+## 1. Install
 
-### Windows (10 / 11、64bit)
+### Windows (10 or 11, 64-bit)
 
-PowerShell を開いて、次を1行ずつ実行します。
+Open PowerShell and run these one at a time:
 
 ```powershell
 mkdir "$env:USERPROFILE\bin" -Force
@@ -25,14 +29,15 @@ $env:Path += ";$env:USERPROFILE\bin"
 gpget version
 ```
 
-最後に `gpget v0.1.0` のように出れば成功です。
+Success looks like `gpget v0.1.0`.
 
-> **`$env:Path` の変更はそのウィンドウだけ有効です。**新しい PowerShell を開くと
-> 消えます。恒久的にしたい場合は「システム環境変数」から `%USERPROFILE%\bin` を
-> Path に追加してください。追加しなくてもテストはできます。
+> **That `$env:Path` change only applies to this window.** It is gone when you
+> open a new PowerShell. To make it permanent, add `%USERPROFILE%\bin` to `Path`
+> in your system environment variables — but you do not need to for this test.
 
-> Windows が「発行元を確認できません」と警告する可能性があります。
-> **これが出るかどうかも知りたい情報です。**出たらその画面を教えてください。
+> Windows may warn that the publisher cannot be verified.
+> **Whether that happens is itself something worth reporting.** If you see it,
+> please tell us what the dialog said.
 
 ### Linux (x86_64)
 
@@ -44,81 +49,82 @@ export PATH="$HOME/bin:$PATH"
 gpget version
 ```
 
-### Linux (Raspberry Pi など aarch64)
+### Linux (aarch64, e.g. a Raspberry Pi)
 
-上の URL の `gpget-linux-amd64` を **`gpget-linux-arm64`** に変えてください。
-どちらか分からない場合は `uname -m` で確認できます
-(`x86_64` → amd64、`aarch64` → arm64)。
+Change `gpget-linux-amd64` in the URL above to **`gpget-linux-arm64`**.
+`uname -m` tells you which you need (`x86_64` → amd64, `aarch64` → arm64).
 
 ---
 
-## 2. 最初の設定
+## 2. First-time setup
 
 ```
 gpget init
 ```
 
-対話形式で、**保存先フォルダ**などを聞かれます。空き容量のある場所を指定してください。
-それ以外は既定のままで構いません。
+It asks a few questions — the important one is the **destination folder**. Pick
+somewhere with free space. The rest can stay at their defaults.
 
 ---
 
-## 3. 試していただきたいこと
+## 3. What to try
 
-### (1) カメラを認識するか
+### (1) Is the camera detected?
 
-GoPro の電源を入れ、USB で PC につなぎます。**カメラ側に「USB 接続済み」などが
-出るまで数秒待ってから**、次を実行します。
+Turn the GoPro on and connect it over USB. **Wait a few seconds**, until the
+camera itself shows something like "USB connected", then run:
 
 ```
 gpget probe
 ```
 
-うまくいけば、カメラの機種名・シリアル・ファームウェア等が並びます。
-**ここで失敗する場合、以降は進めません。**その時点で報告してください。
+If it works you get the model, serial, firmware and so on. **If this step fails,
+nothing after it will work** — please report it at that point.
 
-### (2) カードの中身が見えるか
+### (2) Can it see what is on the card?
 
 ```
 gpget status
 gpget list
 ```
 
-### (3) 取り込めるか
+### (3) Can it transfer?
 
 ```
 gpget sync
 ```
 
-確認を求められたら `y` を入力します。進捗が1ファイルずつ表示され、
-最後に `transferred N, skipped 0, failed 0` のように出れば成功です。
+Answer `y` when asked. Progress is printed per file, and it ends with something
+like `transferred N, skipped 0, failed 0`.
 
-**取り込んだファイルが実際に開けるか**も確認してください
-(写真が表示できる、動画が再生できる)。ファイルサイズだけ合っていて
-中身が壊れている、という事故を見つけたいためです。
+**Please also check that the transferred files actually open** — that photos
+display and videos play. A file with the right size but broken contents is
+exactly the kind of bug worth catching.
 
-### (4) 自動起動（ここが一番不安な部分です）
+### (4) Autostart (the part we are least sure about)
 
 ```
 gpget autostart install
 gpget autostart status
 ```
 
-登録できたら、**カメラを一度抜いて、10秒ほど待ってから挿し直します。**
+Once it is installed, **unplug the camera, wait about ten seconds, and plug it
+back in.**
 
-- Windows: 1分以内に取り込みが始まるか、通知が出るか
-- Linux: 同上。デスクトップ環境が無い場合、通知は出ずログに記録されます
+- Windows: does a transfer start, or a notification appear, within a minute?
+- Linux: same. With no desktop environment there is no notification, so it only
+  goes to the log
 
-しばらく待ってから:
+After waiting a while:
 
 ```
 gpget autostart log
 ```
 
-何か記録されていれば、その内容を教えてください。**何も起きなくても、
-「何も起きなかった」という報告が有用です。**
+If anything was recorded, please include it. **If nothing happened at all, that
+is still worth reporting.**
 
-試し終わったら、元に戻せます。
+You can undo this when you are done:
 
 ```
 gpget autostart uninstall
@@ -126,10 +132,10 @@ gpget autostart uninstall
 
 ---
 
-## 4. 問題が起きたときの報告方法
+## 4. How to report
 
-**次の4つを実行して、出力をそのまま貼ってください。**
-うまくいかなかったコマンドがあれば、そのエラーメッセージも一緒に。
+**Run these four and paste the output**, as far as each one runs. If a command
+failed, include its error message too.
 
 ```
 gpget version
@@ -138,43 +144,49 @@ gpget autostart status
 gpget autostart log
 ```
 
-あわせて教えていただきたいこと:
+Please also include:
 
-- **OS とバージョン**
-  - Windows: `winver` の表示、または「設定 > システム > バージョン情報」
-  - Linux: `uname -a` と、ディストリ名(`cat /etc/os-release` の先頭)
-- **GoPro の機種**
-- **何をしたときに、何が起きたか**(期待と違った点)
+- **Your OS and version**
+  - Windows: what `winver` shows, or Settings > System > About
+  - Linux: `uname -a` and the first line of `/etc/os-release`
+- **Which GoPro** you used
+- **What you did and what happened** — specifically where it differed from what
+  you expected
 
-### ログファイルの場所
+There is an issue form that asks for all of this:
+[Test report](https://github.com/yager/gpget/issues/new?template=test-report.yml).
 
-`gpget autostart log` が動かない場合は、直接見てください。
+### Where the log file lives
 
-| OS | 場所 |
+If `gpget autostart log` does not work, read the file directly.
+
+| OS | Path |
 |---|---|
 | Windows | `%LOCALAPPDATA%\gpget\autostart.log` |
 | Linux | `~/.local/state/gpget/autostart.log` |
 | macOS | `~/Library/Logs/gpget-autostart.log` |
 
-### 特に知りたいこと
+### Especially useful to know
 
-- **インストールの手順で詰まった箇所**(コマンドが通らない、説明が分からない)
-- **警告やセキュリティのダイアログ**が出たか、その文面
-- **自動起動が動いたか**。Windows はタスクスケジューラ、Linux は systemd の
-  ユーザータイマーを使っています。ここは一度も検証できていません
-- **日本語が化けていないか**(通知やメッセージに日本語が含まれます)
+- **Where the instructions tripped you up** — a command that did not run, wording
+  that was unclear
+- **Any security or permission dialog**, and what it said
+- **Whether autostart worked at all.** Windows uses Task Scheduler and Linux a
+  systemd user timer; neither has ever been verified
+- **Whether any text was garbled**
 
 ---
 
-## 5. 安全性について
+## 5. About safety
 
-- **カメラ側のファイルは読むだけです。**削除・変更・リネームは一切しません
-- 保存先に既にあるファイルは、既定では**上書きしません**
-- 転送中のファイルは `.part` という一時ファイルとして書かれ、
-  完全に受信できてから本来の名前になります。途中で失敗しても
-  中途半端なファイルが完成品として残ることはありません
-- 外部のサーバーには何も送信しません。通信はカメラとの間だけです
+- **Files on the camera are only read.** Nothing is deleted, changed or renamed
+- Files already in the destination are **not overwritten** by default
+- A transfer is written to a temporary `.part` file and only gets its real name
+  once every byte has arrived. An interrupted transfer never leaves a
+  half-written file looking finished
+- Nothing is sent to any external server. The only network traffic is to the
+  camera
 
-アンインストールは、置いたバイナリを削除するだけです
-(`gpget autostart uninstall` を先に実行してください)。設定ファイルは
-Windows なら `%APPDATA%\gpget`、Linux なら `~/.config/gpget` にあります。
+To uninstall, delete the binary you downloaded (run `gpget autostart uninstall`
+first). The config file lives in `%APPDATA%\gpget` on Windows and
+`~/.config/gpget` on Linux.

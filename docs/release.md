@@ -105,7 +105,7 @@ gpget autostart install                       # "A test notification was sent" �
 ```
 
 Windows / Linux は手元に環境が無ければここでは確認できません。
-**テスターに渡す前提なら `docs/testing.md` を一緒に渡します。**
+**テスターに渡す前提なら `docs/testing.md`(英語) / `docs/testing.ja.md`(日本語) を一緒に渡します。**
 
 ---
 
