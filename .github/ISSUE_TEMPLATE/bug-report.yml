@@ -1,0 +1,67 @@
+name: Bug report
+description: Something behaved incorrectly
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        日本語で書いていただいて構いません。
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened
+      description: What you expected, and what you saw instead. / 期待した動作と、実際に起きたこと
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The commands you ran, in order. / 実行したコマンド
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS and version
+      placeholder: "macOS 15.7.7 (Apple Silicon) / Windows 11 23H2 / Ubuntu 24.04 aarch64"
+    validations:
+      required: true
+
+  - type: input
+    id: camera
+    attributes:
+      label: Camera
+      placeholder: "GoPro MISSION 1 PRO ILS"
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Diagnostics
+      description: |
+        `gpget probe` shows the interface, camera info and whether `media/list`
+        responds — it is the most useful single output. / gpget probe の出力が最も有用です
+      value: |
+        ```
+        $ gpget version
+
+
+        $ gpget probe
+
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Autostart log (if the problem involves autostart)
+      description: |
+        `gpget autostart log`, or the file itself:
+        macOS `~/Library/Logs/gpget-autostart.log` /
+        Windows `%LOCALAPPDATA%\gpget\autostart.log` /
+        Linux `${XDG_STATE_HOME:-~/.local/state}/gpget/autostart.log`

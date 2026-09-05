@@ -1,0 +1,97 @@
+name: Test report (Windows / Linux)
+description: Tell us how gpget behaved on Windows or Linux — including when it did not work
+title: "[test] "
+labels: ["test report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Autostart has never been run on a real Windows or Linux machine, so
+        **"it did not work" is exactly the report we need.** Partial reports are
+        fine — fill in what you have.
+
+        日本語で書いていただいて構いません。手順は
+        [docs/testing.md](https://github.com/yager/gpget/blob/main/docs/testing.md) にあります。
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - Windows 11
+        - Windows 10
+        - Linux (x86_64)
+        - Linux (aarch64 / Raspberry Pi)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: os_detail
+    attributes:
+      label: OS version / distribution
+      description: "Windows: `winver`. Linux: `uname -a` and the first line of `/etc/os-release`. / Windows は winver、Linux は uname -a"
+      placeholder: "Windows 11 23H2 / Ubuntu 24.04, kernel 6.8.0 aarch64"
+    validations:
+      required: true
+
+  - type: input
+    id: camera
+    attributes:
+      label: Camera
+      description: Model and firmware if you know it. / カメラの機種
+      placeholder: "GoPro MISSION 1 PRO ILS"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: tried
+    attributes:
+      label: What you tried
+      description: Tick what you got to. / 試した項目
+      options:
+        - label: "Install (the binary runs, `gpget version` prints something)"
+        - label: "`gpget probe` — the camera is detected"
+        - label: "`gpget status` / `gpget list` — the card contents are listed"
+        - label: "`gpget sync` — files were transferred"
+        - label: "The transferred files actually open (photos display, videos play)"
+        - label: "`gpget autostart install` — autostart on connect"
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened
+      description: What you expected, and what you saw instead. / 期待した動作と、実際に起きたこと
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Command output
+      description: |
+        Paste the output of these four, as far as they run. / 動く範囲で4つの出力を貼ってください
+      value: |
+        ```
+        $ gpget version
+
+
+        $ gpget probe
+
+
+        $ gpget autostart status
+
+
+        $ gpget autostart log
+
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: |
+        Security or permission dialogs you saw, steps in the instructions that were
+        unclear, garbled text — all useful. / セキュリティ警告、分かりにくかった手順、文字化けなど
