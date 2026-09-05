@@ -1,0 +1,92 @@
+name: CI
+
+# CI only verifies. Release binaries are built locally with
+# scripts/build-release.sh, so the macOS deployment target stays under the
+# maintainer's control rather than following whatever SDK a runner happens to
+# have.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: test + cross-compile (linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "not gofmt'd:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test ./...
+
+      # Always pin GOARCH. `GOOS=linux go build` alone inherits the host arch,
+      # which is how a linux/arm64-only break once shipped unnoticed.
+      - name: cross-compile
+        run: |
+          for target in linux/amd64 linux/arm64 windows/amd64; do
+            os=${target%/*}; arch=${target#*/}
+            printf '%-16s' "$target"
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build ./... && echo OK
+          done
+
+  macos:
+    name: test + build (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: go test
+        run: go test ./...
+
+      # macOS needs cgo for UserNotifications and IOKit. Setting GOARCH flips
+      # CGO_ENABLED to 0, which builds a binary that installs and runs but never
+      # notifies and never sees the camera, so pass CGO_ENABLED=1 explicitly and
+      # then prove the frameworks are actually linked.
+      - name: build and verify the frameworks are linked
+        run: |
+          for arch in arm64 amd64; do
+            out=gpget-darwin-$arch
+            CGO_ENABLED=1 GOOS=darwin GOARCH=$arch go build -o "$out" .
+            for fw in UserNotifications IOKit; do
+              if otool -L "$out" | grep -q "/$fw.framework/"; then
+                echo "$out links $fw"
+              else
+                echo "ERROR: $out does not link $fw"; exit 1
+              fi
+            done
+          done
+
+      - name: report the runner's deployment target
+        run: |
+          echo "runner: $(sw_vers -productVersion), SDK $(xcrun --show-sdk-version)"
+          vtool -show-build gpget-darwin-arm64 | grep -E 'minos|sdk' || true
+
+  windows:
+    name: test (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: go test
+        run: go test ./...
