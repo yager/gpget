@@ -5,7 +5,11 @@ package main
 import "os"
 
 func autostartRedirectLog() {
-	if stdoutIsTTY() {
+	// The scheduled task starts gpget through a hidden wscript.exe, which still
+	// gives the child a (hidden) console -- so stdoutIsTTY() is true even though
+	// nothing is watching. GPGET_AUTOSTART_HIDDEN, set by that launcher, is the
+	// reliable signal to send output to the log instead.
+	if os.Getenv("GPGET_AUTOSTART_HIDDEN") == "" && stdoutIsTTY() {
 		return
 	}
 	f := openAutostartLog()
