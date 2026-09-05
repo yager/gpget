@@ -1,0 +1,19 @@
+# build output
+/gpget
+/gpget.exe
+/dist/
+/bin/
+
+# go
+*.test
+*.out
+/vendor/
+
+# editor / os
+.DS_Store
+.idea/
+.vscode/
+
+# local scratch / captured API responses
+/scratch/
+*.local.json
