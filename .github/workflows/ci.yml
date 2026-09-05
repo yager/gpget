@@ -17,10 +17,13 @@ jobs:
     name: test + cross-compile (linux)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
+          # gpget has no external dependencies, so there is no go.sum to key a
+          # cache on. Leaving caching enabled just warns on every run.
+          cache: false
 
       - name: gofmt
         run: |
@@ -49,10 +52,13 @@ jobs:
     name: test + build (macOS)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
+          # gpget has no external dependencies, so there is no go.sum to key a
+          # cache on. Leaving caching enabled just warns on every run.
+          cache: false
 
       - name: go test
         run: go test ./...
@@ -84,9 +90,12 @@ jobs:
     name: test (Windows)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
+          # gpget has no external dependencies, so there is no go.sum to key a
+          # cache on. Leaving caching enabled just warns on every run.
+          cache: false
       - name: go test
         run: go test ./...
