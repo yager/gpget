@@ -18,7 +18,7 @@ nettest で実証)。トグルを ON にしても launchd コンテキストに�
 
 → macOS では 2 段構えにする。LaunchAgent は**ネットワークに一切触れず**、
 `net.Interfaces()` で GoPro 形状の口(172.16-31/24)が生えたかだけを見る。検出したら
-`open ~/Library/Application Support/gpget/gpget.app` を起動し、そちらが実際に転送する。
+`~/Applications/gpget.app` の中の実行ファイルを launchd が常駐させ、そちらが実際に転送する。
 このバンドルは `gpget autostart install` が組み立てて ad-hoc 署名するもので、
 中身は gpget のバイナリそのもの。`LSUIElement` 指定なので**ウィンドウも Dock アイコンも
 出ない**。詳細と、実装して分かった落とし穴 4 点は `docs/design.md` の
@@ -26,7 +26,7 @@ nettest で実証)。トグルを ON にしても launchd コンテキストに�
 
 | OS | 機構 | 状態 |
 |---|---|---|
-| macOS | LaunchAgent(`StartInterval` 5 秒、IF 検出のみ)→ `open gpget.app` → 転送 / 通知 | **実機検証済み(2026-09-05)**。接続検出 → バンドル起動 → カメラ到達 → `mode=auto` で 106 件 / 401.8M を無音転送 → 完了通知。ウィンドウは一切出ない。通知は `UserNotifications` で gpget 名義(`authorizationStatus=2`)。進捗差し替えと `gpget autostart log` も同日実機で確認 |
+| macOS | LaunchAgent で `gpget.app` 内の実行ファイルを常駐(IOKit の USB 通知で反応、ポーリングなし)→ 転送 / 通知 | **実機検証済み(2026-09-05)**。接続検出 → バンドル起動 → カメラ到達 → `mode=auto` で 106 件 / 401.8M を無音転送 → 完了通知。ウィンドウは一切出ない。通知は `UserNotifications` で gpget 名義(`authorizationStatus=2`)。進捗差し替えと `gpget autostart log` も同日実機で確認 |
 | Windows | Scheduled Task(1分間隔ポーリング、`autostart run` が直接転送/通知)| 実装済み・**未検証**。`--print` で PowerShell を出力、手動登録可 |
 | Linux | systemd user timer(1分間隔ポーリング、`autostart run` が直接転送/通知)| 実装済み・**未検証**。`--print` で unit を出力、手動登録可 |
 

@@ -76,6 +76,10 @@ func cmdAutostart(ctx context.Context, args []string) error {
 				autostartBundleExe())
 		}
 		via := notify.Via("gpget: test notification", "If you can see this, transfer results will reach you too.")
+		// install reads this back; see sendInstallTestNotify.
+		if res := os.Getenv(notifyResultEnv); res != "" {
+			writeState(res, via)
+		}
 		if via == "" {
 			return fmt.Errorf("could not send the test notification")
 		}
@@ -272,14 +276,23 @@ func destBusy(cfgPath string) bool {
 	return xfer.InspectLock(dest).Held
 }
 
-func testNotifyReport(ok bool) string {
-	if ok {
-		return "A test notification was sent. If no banner appeared, turn gpget on in\nSystem Settings > Notifications (without it you cannot see the result)."
+// notifyResultEnv names the file `autostart test-notify` writes its channel to.
+const notifyResultEnv = "GPGET_NOTIFY_RESULT"
+
+// testNotifyReport turns the channel that carried the test notification into
+// something honest. Anything other than the platform's own notification service
+// is a fallback macOS routinely drops, so it must not be reported as success.
+func testNotifyReport(via string) string {
+	switch {
+	case via == "":
+		if runtime.GOOS == "darwin" {
+			return fmt.Sprintf("The test notification could not be sent at all.\nTo check by hand, run the bundled copy (not the one on PATH):\n  %q autostart test-notify", autostartBundleExe())
+		}
+		return "The test notification could not be sent.\nRun `gpget autostart test-notify` in a terminal to check."
+	case runtime.GOOS == "darwin" && via != "UserNotifications":
+		return fmt.Sprintf("gpget does NOT have notification permission yet, so it fell back to\n%s -- a channel macOS usually drops. You will not be told when a\ntransfer finishes until you allow it:\n  System Settings > Notifications > gpget\nThen check it with:\n  %q autostart test-notify", via, autostartBundleExe())
 	}
-	if runtime.GOOS == "darwin" {
-		return fmt.Sprintf("The test notification could not be sent.\nTo check by hand, run the bundled copy (not the one on PATH):\n  %q autostart test-notify", autostartBundleExe())
-	}
-	return "The test notification could not be sent.\nRun `gpget autostart test-notify` in a terminal to check."
+	return "A test notification was sent and should have appeared as a banner.\nIf it did not, turn gpget on in System Settings > Notifications."
 }
 
 func logf(format string, a ...interface{}) {

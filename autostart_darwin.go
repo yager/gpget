@@ -82,14 +82,44 @@ func waitForInterfaces(d time.Duration) []gopro.Candidate {
 // executable has none, so when launchd starts it the connection to the camera
 // is refused with "no route to host" and no prompt is ever shown. Running the
 // same binary from inside a bundle is allowed. Measured 2026-09-05 on 15.7.7;
-// see docs/design.md "macOS の .app バンドルについて".
+// see docs/design.md.
+//
+// Why ~/Applications and not Application Support — notifications. usernoted
+// looks the bundle up in the Launch Services database before it will let the
+// process speak for its own identifier, and Launch Services only knows about
+// apps in the locations it scans. From Application Support the lookup fails:
+//
+//	usernoted: LSApplicationRecord failed to find com.gpget.gpget
+//	usernoted: Failed to find or validate center with identifier com.gpget.gpget
+//
+// requestAuthorization then returns "Notifications are not allowed for this
+// application" *without ever presenting a prompt*, and the state sticks at
+// denied. Measured 2026-09-06 on macOS 15.7.7 across 13 throwaway bundles: the
+// same bundle in ~/Applications is found and prompts normally, and the same
+// bundle in Application Support prompts too once `lsregister -f` has been run
+// by hand. Launch method, LSUIElement and NSApplication made no difference.
 func autostartBundlePath() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, "Applications", "gpget.app")
+}
+
+// legacyAutostartBundlePath is where the bundle lived before 2026-09-06. It is
+// only referenced so install and uninstall can clean it up; a stale copy there
+// would keep answering for com.gpget.gpget and never get notification access.
+func legacyAutostartBundlePath() string {
+	return filepath.Join(autostartSupportDir(), "gpget.app")
+}
+
+// autostartSupportDir holds gpget's own bookkeeping. It is deliberately not
+// derived from the bundle path any more: the bundle now lives in ~/Applications
+// and gpget must not scatter dotfiles into a user-visible apps folder.
+func autostartSupportDir() string {
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		home, _ := os.UserHomeDir()
 		dir = filepath.Join(home, "Library", "Application Support")
 	}
-	return filepath.Join(dir, "gpget", "gpget.app")
+	return filepath.Join(dir, "gpget")
 }
 
 // runningInsideBundle reports whether this process was started from the bundle
@@ -148,7 +178,7 @@ func bundleInfoPlist(ver string) string {
 // in place, so its hash never matches the source. (Measured 2026-09-05: 9560338
 // vs 9578480 bytes for the same build.)
 func autostartStampPath() string {
-	return filepath.Join(filepath.Dir(autostartBundlePath()), "bundle.src.sha256")
+	return filepath.Join(autostartSupportDir(), "bundle.src.sha256")
 }
 
 func fileSHA256(p string) (string, error) {
@@ -355,6 +385,15 @@ func autostartAgent(parent context.Context, cfgPath string) error {
 }
 
 func autostartInstall(exe string) (string, error) {
+	// A bundle left at the old path would keep claiming com.gpget.gpget while
+	// being invisible to Launch Services, which is exactly the state that
+	// makes notifications impossible. Remove it before building the new one.
+	if legacy := legacyAutostartBundlePath(); legacy != autostartBundlePath() {
+		_ = os.RemoveAll(legacy)
+	}
+	if err := os.MkdirAll(filepath.Dir(autostartBundlePath()), 0o755); err != nil {
+		return "", err
+	}
 	if err := writeAutostartBundle(exe); err != nil {
 		return "", err
 	}
@@ -380,8 +419,20 @@ func autostartInstall(exe string) (string, error) {
 	ok := sendInstallTestNotify()
 	return fmt.Sprintf(`LaunchAgent installed: %s
 Offloading starts the moment you plug the camera in (resident, no window).
-The first time, macOS asks to allow notifications and local network access.
-Allow both.
+
+macOS asks for two permissions, and the notification one is easy to miss:
+
+  Notifications   A BANNER at the top right, titled "gpget", saying that
+                  notifications may include text, sounds and icon badges.
+                  It is a request, even though it does not look like one.
+                  Open the "Options" menu on that banner and choose Allow.
+                  Clicking the banner itself only opens System Settings.
+                  It disappears after 60 seconds, and letting it expire
+                  counts as a refusal -- macOS will not ask again.
+  Local network   A normal dialog. Click Allow.
+
+If you miss the banner, turn gpget on by hand:
+System Settings > Notifications > gpget.
 
 %s
 While a transfer runs: gpget autostart status
@@ -390,20 +441,33 @@ App:                   %s
 Log file:              %s`, p, testNotifyReport(ok), autostartBundlePath(), launchLogPath()), nil
 }
 
-// sendInstallTestNotify runs the bundle binary directly. `open -a --args` is
-// discarded when Launch Services already has the agent process, so the test
-// banner would silently not fire. Stdio is the log file, not the install TTY:
-// otherwise test-notify would skip fd redirect and the log would miss [notify:].
-func sendInstallTestNotify() bool {
+// sendInstallTestNotify runs the bundle binary directly and reports which
+// channel actually carried the notification. `open -a --args` is discarded when
+// Launch Services already has the agent process, so the test banner would
+// silently not fire. Stdio is the log file, not the install TTY: otherwise
+// test-notify would skip fd redirect and the log would miss [notify:].
+//
+// The channel comes back through a file rather than the exit status. A zero
+// exit only means *something* accepted the notification, and on macOS that
+// something is usually the osascript fallback, whose banner macOS then drops.
+// install used to report that as success; it is the opposite of success.
+func sendInstallTestNotify() string {
 	exe := autostartBundleExe()
+	res := filepath.Join(autostartSupportDir(), "test-notify.result")
+	_ = os.MkdirAll(filepath.Dir(res), 0o755)
+	_ = os.Remove(res)
 	cmd := exec.Command(exe, "autostart", "test-notify")
+	cmd.Env = append(os.Environ(), notifyResultEnv+"="+res)
 	if f := openAutostartLog(); f != nil {
 		defer f.Close()
 		cmd.Stdout = f
 		cmd.Stderr = f
 		cmd.Stdin = nil
 	}
-	return cmd.Run() == nil
+	_ = cmd.Run()
+	via := strings.TrimSpace(readState(res))
+	_ = os.Remove(res)
+	return via
 }
 
 // launchctlBootout unloads the job and waits for it to actually go away.
@@ -427,6 +491,7 @@ func autostartUninstall() error {
 		return err
 	}
 	os.RemoveAll(autostartBundlePath())
+	os.RemoveAll(legacyAutostartBundlePath())
 	// Remove every state file, not just this process's: autostartStatePath()
 	// resolves to the launcher's copy here, and the worker's would be orphaned.
 	os.Remove(autostartStatePath())

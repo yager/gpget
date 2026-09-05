@@ -279,30 +279,47 @@ gpget autostart install --print   # just print what would be registered
 
 ### macOS — no window, only a notification
 
-A background LaunchAgent is silently denied access to the camera (172.x) by
-macOS Local Network privacy. No permission prompt appears, and flipping the
-toggle in System Settings does not help a process started by launchd — **a bare
-executable has no app identity for macOS to attach the permission to.**
+A background process started by launchd is silently denied access to the camera
+(172.x) by macOS Local Network privacy. No permission prompt appears, and
+flipping the toggle in System Settings does not help — **a bare executable has
+no app identity for macOS to attach the permission to.**
 
-So gpget splits the work in two:
+So `gpget autostart install` builds a small app bundle at
+**`~/Applications/gpget.app`**, ad-hoc signs it, and registers a LaunchAgent that
+runs the copy of gpget *inside* that bundle. It has an identity, so the
+connection is allowed. What you download is still a single binary; the bundle is
+assembled locally.
 
-1. **The LaunchAgent** (every 5 seconds) **never touches the network.** It only
-   checks whether a GoPro-shaped wired interface has appeared (under 10 ms per
-   run). If the interface is not up yet, it asks `ioreg` whether a GoPro is
-   plugged in and, if so, waits up to 30 seconds for it
-2. When it finds one, it launches
-   `~/Library/Application Support/gpget/gpget.app`. That is what actually talks
-   to the camera — **it has an identity, so the connection is allowed**
+The bundle is marked `LSUIElement`, so **no window, no Dock icon, no menu bar
+item**. It stays resident and waits on an IOKit USB notification for GoPro's
+vendor ID (0x2672) — **there is no polling**, and offloading starts the moment
+you plug the camera in.
 
-That `.app` is marked `LSUIElement`, so **no window, no Dock icon, no menu bar
-item**. Inside it is the gpget binary itself; `gpget autostart install` assembles
-the bundle and ad-hoc signs it. What you download is still a single binary.
+#### Allow notifications — this part is easy to get wrong
 
-The first time, macOS asks whether to allow notifications and local network
-access. Allow both. `gpget autostart install` ends by sending a test
-notification: **make sure you actually see that banner** — without notifications
-you cannot tell what happened. If it does not appear, turn gpget on in
-System Settings > Notifications.
+macOS asks for two permissions on the first run, and they do not look alike.
+
+**Local network** is an ordinary dialog. Click Allow.
+
+**Notifications is a banner at the top right**, titled "gpget", saying that
+notifications may include text, sounds and icon badges. It does not look like a
+question, but it is one:
+
+- Open the **"Options"** menu on that banner and choose **Allow**
+- **Clicking the banner itself only opens System Settings** — it does not grant
+  anything
+- **The banner disappears after 60 seconds, and letting it expire is recorded as
+  a refusal.** macOS will not ask again
+
+If you miss it, turn gpget on by hand in **System Settings > Notifications >
+gpget**. `gpget autostart install` ends by sending a test notification and tells
+you whether it really went through, so you can tell the difference between
+"allowed" and "silently off".
+
+Why `~/Applications` and not somewhere hidden: macOS looks the bundle up in the
+Launch Services database before it will let it post as itself. From a directory
+Launch Services does not scan, the notification request is refused outright and
+no prompt is ever shown.
 
 | mode | behaviour |
 |---|---|
@@ -314,8 +331,9 @@ System Settings > Notifications.
   other extra install is needed**
 - **Failures are always notified.** With no window, finishing quietly would be
   indistinguishable from success
-- The app lives at `~/Library/Application Support/gpget/gpget.app` and is rebuilt
-  on reinstall
+- The app lives at `~/Applications/gpget.app` and is rebuilt on reinstall. It is
+  a normal folder you can look at, and deleting it is safe — `gpget autostart
+  install` builds it again
 - Read the log with `gpget autostart log` (current file plus one `.old`
   generation, rotated at about 1 MB). `gpget autostart status` prints its path
 - `gpget autostart status` also tells you whether a transfer is in progress, by

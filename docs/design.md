@@ -101,7 +101,7 @@ rclone / gh / croc / syncthing が Go なのと同じ理由。
 | F-12e | **`list` の表示**:`[burst ×30]` / `[timelapse ×20]` / `[interval ×30]`、`ct` が未知なら `[group ×N]` にフォールバックする |
 | F-13 | **チャプターリネーム**:`PPNNNNNN.MP4` を分解(prefix / 末尾4桁=クリップ / 先頭2桁=チャプター)し、`chapter_name` テンプレートで改名してコピー(バイト無改変)。`regroup` = `always` / `multi`(2章以上のみ) / `never`。**`.LRV` は親 MP4 の最終ファイル名幹に `.LRV` を付けた名前**(例 `GX2495_01.MP4` → `GX2495_01.LRV`)。GoPro の `GL` プレフィックス規則はリネーム後は放棄(MP4 の隣に並んでソートされる方を優先) |
 | F-14 | `probe` サブコマンド:発見した IF / IP、`camera/info`、`media/list` 到達可否を表示 |
-| F-15 | **接続時自動起動**(opt-in):`autostart install/uninstall/status/print/run`。**macOS** = LaunchAgent(`StartInterval` 5 秒)。バックグラウンドの launchd プロセスは macOS の Local Network プライバシーでローカル 172.x への接続を無音拒否され許可プロンプトも出せない(裸の実行ファイルにはバンドル identity が無いため)。そこで `autostart run` は `net.Interfaces()` で GoPro 形状の IF が生えたかだけを見て(ネットワーク I/O なし)、検出したら `open <gpget.app>` で自前の `.app` バンドルを起動し、そちらが転送を行う。バンドルは `LSUIElement` 指定でウィンドウも Dock アイコンも出さず、`autostart install` が組み立てて ad-hoc 署名する(配布物は単一バイナリのまま)。`mode` は `notify`=件数通知のみ / `auto`=無音で転送し完了 / 失敗を通知。`auto` の進捗は同じ通知を差し替え、ファイル単位は `gpget autostart log` に残す。**ウィンドウが無いので失敗は必ず通知する**(黙って終わると成功と区別できない)。**Windows** = Scheduled Task 1分ポーリング、**Linux** = systemd user timer 1分ポーリング。Win/Linux はプライバシーゲートが無いので `autostart run` が自分で `media/list` を数え、config `mode` に従い `notify`(通知のみ)/ `auto`(ヘッドレス `sync`)。新規メディアが無い / カメラ未応答なら静かに終了。同一接続の再発火は状態ファイルで抑制。Win/Linux 通知は `internal/notify`(依存ゼロ、`notify-send`/PowerShell toast、無ければ stderr)。**実装済み: macOS は実機検証済み(2026-09-05、接続検出 → バンドル起動 → 106 件 401.8M の無音転送 → 完了通知、進捗差し替えと `autostart log` も確認)・Win/Linux は未検証(`--print` で手動登録可)** |
+| F-15 | **接続時自動起動**(opt-in):`autostart install/uninstall/status/print/run`。**macOS** = LaunchAgent で常駐(`RunAtLoad` + `KeepAlive`)し、IOKit の USB 接続通知で反応する(ポーリングなし)。バックグラウンドの launchd プロセスは macOS の Local Network プライバシーでローカル 172.x への接続を無音拒否され許可プロンプトも出せない(裸の実行ファイルにはバンドル identity が無いため)。そこで `autostart install` は `~/Applications/gpget.app` に自前の `.app` バンドルを組み立てて ad-hoc 署名し、その中の実行ファイルを launchd から常駐させる(配布物は単一バイナリのまま)。バンドルは `LSUIElement` 指定でウィンドウも Dock アイコンも出さない。`~/Applications` なのは通知の許可のため — Launch Services が走査しない場所に置くと `usernoted` がバンドルを検証できず、許可プロンプトが一度も出ないまま拒否される(2026-09-06 実測)。`mode` は `notify`=件数通知のみ / `auto`=無音で転送し完了 / 失敗を通知。`auto` の進捗は同じ通知を差し替え、ファイル単位は `gpget autostart log` に残す。**ウィンドウが無いので失敗は必ず通知する**(黙って終わると成功と区別できない)。**Windows** = Scheduled Task 1分ポーリング、**Linux** = systemd user timer 1分ポーリング。Win/Linux はプライバシーゲートが無いので `autostart run` が自分で `media/list` を数え、config `mode` に従い `notify`(通知のみ)/ `auto`(ヘッドレス `sync`)。新規メディアが無い / カメラ未応答なら静かに終了。同一接続の再発火は状態ファイルで抑制。Win/Linux 通知は `internal/notify`(依存ゼロ、`notify-send`/PowerShell toast、無ければ stderr)。**実装済み: macOS は実機検証済み(2026-09-05、接続検出 → バンドル起動 → 106 件 401.8M の無音転送 → 完了通知、進捗差し替えと `autostart log` も確認)・Win/Linux は未検証(`--print` で手動登録可)** |
 | F-16 | **やらない。** 手動 `sync`/`get` は TTY 進捗で足りる。自動起動の事後確認は `gpget autostart log`(F-15)。汎用の転送ログは持たない |
 | F-17 | **排他ロック**:`sync` / `get` は保存先ごとのロックファイル(`<dest>/.gpget.lock`、PID + 開始時刻)を取ってから走る。既にロックがあれば起動しない(autostart の `auto` と手動実行が同じ `.part` を触る事故を防ぐ)。stale ロック(PID 消滅)は自動で奪う |
 | F-18 | **進捗表示**:ファイル単位(転送済 / 合計・%・速度・ETA)と全体(N/M ファイル・合計 GB)を出す。TTY なら 1 行を更新、非 TTY なら行ごと。`--quiet` で抑制、`--json` で機械可読 |
@@ -201,8 +201,9 @@ gpget.app/Contents/
 ```
 
 **配布物は単一バイナリのまま。**`gpget autostart install` が
-`~/Library/Application Support/gpget/` にこの構造を組み立て、
+`~/Applications/` にこの構造を組み立て、
 `codesign -s - --identifier <bundle id>` で ad-hoc 署名する。
+置き場所が `~/Applications` である理由は次節(通知の許可)を参照。
 
 ### 既知の macOS 不具合(防げない)
 
@@ -294,6 +295,89 @@ worker のときだけ 6 時間に伸ばした。
 **そのため `autostart install` の最後にテスト通知を撃つ。**許可ダイアログを
 「ユーザーが画面を見ている install 時」に出すためで、初回のカメラ接続時に
 出させると、拒否されても誰も気づけない。
+
+### 通知が一度も許可されない問題(2026-09-06 に原因特定)
+
+新規 macOS アカウントで `install` すると、許可ダイアログが**一度も出ないまま**
+`requestAuthorization` が即座に失敗する事象があった。
+
+```
+[un] requestAuthorization: granted=NO err=Notifications are not allowed for this application
+```
+
+**原因: `usernoted` は、プロセスが自分のバンドル ID を名乗る資格を
+Launch Services のデータベースで検証する。**そこに載っていないバンドルは
+その場で弾かれ、許可要求そのものが作られない。
+`~/Library/Application Support` は Launch Services が走査しないので、
+そこに置いた `.app` は永久に載らない。システムログにそのまま出る:
+
+```
+E usernoted: LSApplicationRecord failed to find com.gpget.gpget
+E usernoted: Failed to validate <path> for use with identifier com.gpget.gpget
+E usernoted: Failed to find or validate center with identifier com.gpget.gpget
+```
+
+**使い捨てバンドル 13 本での実測(macOS 15.7.7、2026-09-06)。**
+バンドル ID を毎回変えれば許可状態は `notDetermined` に戻るので、
+同一アカウント上で何度でも初回状態を作れる。
+
+| 置き場所 | LS 登録 | 起動方法 | `LSUIElement` | `NSApplication` | 結果 |
+|---|---|---|---|---|---|
+| Application Support | なし | 直接 exec | あり | なし | 即拒否・**バナー 0 件** |
+| Application Support | なし | `open` | あり | なし | 即拒否・バナー 0 件 |
+| Application Support | なし | `open` | **なし** | なし | 即拒否・バナー 0 件 |
+| Application Support | なし | `open` | あり | **あり** | 即拒否・バナー 0 件 |
+| Application Support | **`lsregister -f`** | 直接 exec | あり | なし | **バナー表示 → 許可** |
+| **`~/Applications`** | 自動 | 直接 exec | あり | なし | **バナー表示 → 許可** |
+
+**起動方法・`LSUIElement`・`NSApplication` の有無・ad-hoc 署名はいずれも無関係。**
+効いていたのは Launch Services の登録有無だけだった。
+
+対処は **`~/Applications` に置く**こと。Launch Services が自動で走査する場所なので、
+登録処理が要らない。私有ツール `lsregister`
+(`/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister`)
+を叩けば任意の場所でも通るが、パスが固定の非公開ツールに依存するので採らない。
+
+判定は目視ではなくシステムログで行う。許可要求は
+`com.apple.notificationcenter.askpermissions` という通知レコードとして作られるので、
+
+```
+log stream --style compact --level debug --predicate 'process == "usernoted"'
+```
+
+を流して `askpermissions` の有無を数えれば、人が画面を見ていなくても白黒つく。
+
+### 許可バナーは 60 秒で失効し、放置は「拒否」になる(2026-09-06 実測)
+
+許可要求が出せるようになっても、それだけでは足りない。macOS の通知許可は
+**ダイアログではなくバナー**で来る。タイトルがアプリ名、本文が
+「テキスト、サウンド、アイコンバッジにより通知されます」だけで、
+**質問に見えない。**しかも:
+
+- 許可は**バナー右下の「オプション」プルダウン**からしか出せない
+- **バナー本体をクリックすると設定画面が開くだけ**で、許可にはならない
+- **60 秒で自動的に消え、無応答は「拒否」として永続記録される**
+
+実測ログ(バナーを一切触らずに放置):
+
+```
+00:25:47.731  Presenting <askpermissions req:"com.gpget.gpgettest13"> as alert
+00:26:47.758  Removing displayed <askpermissions ...>        ← ちょうど 60 秒後
+その後の authorizationStatus = 1 (denied)
+```
+
+つまり**ユーザーが何もしなければ黙って拒否になり、二度と聞かれない。**
+アプリ側から解除する手段は無い(システム設定で人が ON にするしかない)。
+
+対処はコードでは不可能なので、**`install` の出力で実物の見た目ごと予告する**。
+あわせて `install` は、テスト通知が `UserNotifications` で通ったのか
+フォールバック経路に落ちたのかを区別して表示する
+(以前は osascript に落ちても「送信しました」と表示しており、
+許可が無いユーザーに「大丈夫」と伝えてしまっていた)。
+
+なお `[un] requestAuthorization: timeout` は「**バナーは出たが誰も答えていない**」
+ことの徴候で、`granted=NO ... not allowed` の即時失敗(= バナーが出ていない)とは
+原因が違う。ログを見るときはこの 2 つを混同しないこと。
 
 ### 自動起動は常駐エージェント + IOKit 通知(2026-09-05)
 

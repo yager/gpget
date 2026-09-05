@@ -114,6 +114,17 @@ back in.**
 - Windows: does a transfer start, or a notification appear, within a minute?
 - Linux: same. With no desktop environment there is no notification, so it only
   goes to the log
+- macOS: it should react within a second or two, not a minute
+
+**macOS only — the notification permission is easy to miss.** `install` ends by
+sending a test notification and then says whether it actually went through. If
+it says gpget does not have permission, turn it on in
+**System Settings > Notifications > gpget** and run
+`gpget autostart test-notify` from the app bundle to confirm. The permission
+request itself arrives as a banner titled "gpget": choose **Options > Allow** on
+that banner. Clicking the banner only opens System Settings, and ignoring it for
+60 seconds is recorded as a refusal. **Please tell us what the install output
+said about the test notification** — that line is the whole point of this check.
 
 After waiting a while:
 

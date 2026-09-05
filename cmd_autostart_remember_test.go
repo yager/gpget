@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -32,19 +33,31 @@ func TestRememberAutostart(t *testing.T) {
 }
 
 func TestTestNotifyReport(t *testing.T) {
-	ok := testNotifyReport(true)
+	ok := testNotifyReport("UserNotifications")
 	if !strings.Contains(ok, "test notification was sent") {
 		t.Fatalf("success blurb: %q", ok)
 	}
 	if strings.Contains(ok, "could not be sent") {
 		t.Fatalf("success blurb must not look like failure: %q", ok)
 	}
-	fail := testNotifyReport(false)
-	if !strings.Contains(fail, "could not be sent") {
-		t.Fatalf("failure blurb: %q", fail)
+	none := testNotifyReport("")
+	if !strings.Contains(none, "could not be sent") {
+		t.Fatalf("failure blurb: %q", none)
 	}
-	if !strings.Contains(fail, "autostart test-notify") {
-		t.Fatalf("failure blurb must tell the user what to run: %q", fail)
+	if !strings.Contains(none, "autostart test-notify") {
+		t.Fatalf("failure blurb must tell the user what to run: %q", none)
+	}
+	// The regression this guards: install used to call an osascript fallback a
+	// success, so a user with no notification permission was told everything
+	// was fine and then never heard from gpget again.
+	if runtime.GOOS == "darwin" {
+		fell := testNotifyReport("osascript (unreliable)")
+		if strings.Contains(fell, "should have appeared") {
+			t.Fatalf("fallback must not be reported as success: %q", fell)
+		}
+		if !strings.Contains(fell, "System Settings > Notifications") {
+			t.Fatalf("fallback blurb must say how to fix it: %q", fell)
+		}
 	}
 }
 
