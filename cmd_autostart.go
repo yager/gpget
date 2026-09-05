@@ -97,6 +97,12 @@ func cmdAutostart(ctx context.Context, args []string) error {
 			fmt.Println("disabled (enable it with: gpget autostart install)")
 		}
 		fmt.Printf("mode: %s\n", mustMode(*cfgPath))
+		// The app path matters after an update: gpget copies itself into the
+		// thing launchd actually runs, and a copy left in the old place keeps
+		// working for transfers while being invisible to notifications.
+		if app := autostartAppPath(); app != "" {
+			fmt.Printf("app: %s\n", app)
+		}
 		fmt.Printf("log: %s\n", autostartLogPath())
 		printTransferStatus(*cfgPath)
 		return nil

@@ -102,6 +102,54 @@ Go 1.21 以降が必要です。macOS では cgo(通知と USB 監視)を使う�
 [Issues](https://github.com/yager/gpget/issues) で結果を教えていただけると助かります
 (手順は [docs/testing.ja.md](docs/testing.ja.md))。
 
+### アップデート
+
+**インストールと同じ `curl` コマンドをもう一度実行するだけです。**
+バイナリが上書きされます。事前のアンインストールは要りません。
+
+```bash
+curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-darwin-arm64
+chmod +x ~/bin/gpget
+gpget version
+```
+
+URL は上のインストール手順と同じものを、お使いの環境に合わせて選んでください。
+Windows は最初にダウンロードしたのと同じ方法で `gpget.exe` を置き換えます。
+
+**自動起動を使っている場合は、そのあと install をやり直してください:**
+
+```bash
+gpget autostart install
+```
+
+gpget は「接続時に実際に動くもの」の中に自分自身をコピーしているので、
+そのコピーを作り直す必要があります。更新を自動検出して作り直す仕組みは入っていますが、
+確実なのは `install` のやり直しだけです。**置き場所や名前が変わる更新では必須です。**
+`gpget autostart status` は現在使われているコピーの場所を表示し、
+それがこのバージョンの置き場所と違う場合はその旨も出します。
+
+設定はアップデートで触りません。バイナリの外にあります(場所は `gpget config path`)。
+
+バージョンを固定している箇所はありません。上の `curl` の URL は常に最新リリースを
+取りに行くので、どこかの番号を書き換える必要はありません。
+
+### アンインストール
+
+```bash
+gpget autostart uninstall   # 自動起動を有効にしていた場合のみ
+rm ~/bin/gpget
+```
+
+`autostart uninstall` は LaunchAgent(Windows はタスク、Linux は systemd ユニット)と、
+組み立てたアプリバンドルを消します。**設定と、取り込み済みのファイルは残ります。**
+設定も消したい場合は、`gpget config path` が指すフォルダを手で削除してください。
+
+| OS | 設定の場所 |
+|---|---|
+| macOS | `~/Library/Application Support/gpget/` |
+| Windows | `%AppData%\gpget\` |
+| Linux | `~/.config/gpget/` |
+
 ---
 
 ## 使い方

@@ -528,3 +528,37 @@ func autostartTriggered() bool { return runningInsideBundle() || autostartInAgen
 // autostartInAgent marks the resident agent, which does the camera work itself
 // rather than handing off to the bundle. Set once, before any autostart work.
 var autostartInAgent bool
+
+// autostartAppPath is the bundle the installed LaunchAgent actually runs. It is
+// read back from the plist rather than computed, because the whole point is to
+// show when the installed copy is somewhere this version no longer builds --
+// after an update that moved it, for instance. Empty when nothing is installed.
+func autostartAppPath() string {
+	b, err := os.ReadFile(launchAgentPath())
+	if err != nil {
+		return ""
+	}
+	return describeAutostartApp(string(b), autostartBundlePath())
+}
+
+// describeAutostartApp pulls the .app path out of a LaunchAgent plist and says
+// whether it is where this version of gpget installs one. Split out from
+// autostartAppPath so the mismatch case -- the one that only shows up after an
+// update that moved the bundle -- can be tested without touching ~/Library.
+func describeAutostartApp(plist, want string) string {
+	const marker = ".app/Contents/MacOS/"
+	i := strings.Index(plist, marker)
+	if i < 0 {
+		return ""
+	}
+	head := plist[:i+len(".app")]
+	j := strings.LastIndex(head, "<string>")
+	if j < 0 {
+		return ""
+	}
+	app := head[j+len("<string>"):]
+	if app != want {
+		return app + "  (not where this version installs it -- run `gpget autostart install`)"
+	}
+	return app
+}

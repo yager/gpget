@@ -201,3 +201,7 @@ func autostartAgent(_ context.Context, _ string) error {
 
 // autostartBundleExe has no meaning off macOS; there is no app bundle.
 func autostartBundleExe() string { return "gpget" }
+
+// autostartAppPath has no meaning here: there is no app bundle to keep track
+// of, so status has nothing extra to print.
+func autostartAppPath() string { return "" }

@@ -106,6 +106,56 @@ try it, please report what happened in
 [Issues](https://github.com/yager/gpget/issues) — the steps are in
 [docs/testing.md](docs/testing.md).
 
+### Updating
+
+Run the same `curl` command again. It overwrites the binary in place; nothing
+else needs uninstalling.
+
+```bash
+curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-darwin-arm64
+chmod +x ~/bin/gpget
+gpget version
+```
+
+Use the URL for your platform, exactly as in the install step above. On Windows,
+replace `gpget.exe` the same way you first downloaded it.
+
+**If you use autostart, re-run the install afterwards:**
+
+```bash
+gpget autostart install
+```
+
+gpget copies itself into the thing that actually runs on connect, so that copy
+has to be refreshed. It usually notices an update on its own and rebuilds, but
+re-running `install` is the only way to be sure — and after an update that moves
+or renames anything, it is required. `gpget autostart status` prints the copy
+currently in use and tells you when it is not where this version puts it.
+
+Your configuration is not touched by an update. It lives outside the binary
+(`gpget config path` prints where).
+
+Nothing else is version-pinned: the `curl` URLs above always fetch the newest
+release, so there is no version number to bump anywhere.
+
+### Uninstalling
+
+```bash
+gpget autostart uninstall   # only if you enabled it
+rm ~/bin/gpget
+```
+
+`autostart uninstall` removes the LaunchAgent (or scheduled task / systemd unit)
+and the app bundle it built. Your config and everything you already offloaded
+are left alone. To remove the configuration too, delete the folder
+`gpget config path` points at:
+
+| OS | Configuration |
+|---|---|
+| macOS | `~/Library/Application Support/gpget/` |
+| Windows | `%AppData%\gpget\` |
+| Linux | `~/.config/gpget/` |
+
 ---
 
 ## Usage
