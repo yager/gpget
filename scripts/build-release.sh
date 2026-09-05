@@ -15,6 +15,14 @@ cd "$(dirname "$0")/.."
 VERSION="${1:-$(git describe --tags --always --dirty 2>/dev/null || echo dev)}"
 OUT=dist
 
+# Pin the macOS deployment target. Without it, clang defaults to the version of
+# the machine doing the build, so upgrading this Mac would silently raise the
+# minimum macOS the release requires -- the build would still succeed and every
+# check would still pass. Measured 2026-09-05: a macOS 15.7.7 host produced
+# minos 15.0, a macOS 26.6.2 CI runner produced minos 26.0, with the same SDK
+# major. Keep this in step with the supported-macOS line in the README.
+export MACOSX_DEPLOYMENT_TARGET=15.0
+
 if [ "$(uname -s)" != "Darwin" ]; then
   echo "error: run this on macOS. The darwin build needs cgo and cannot be" >&2
   echo "       cross-compiled; a non-macOS build would silently ship a" >&2
@@ -63,10 +71,14 @@ for fw in UserNotifications IOKit; do
 done
 [ "$missing" -eq 0 ] || { echo "aborting: the macOS build is not usable" >&2; exit 1; }
 
-# minos comes from the build machine's SDK, not from a flag. Record it so the
-# supported-macOS line in the docs stays honest.
+# Confirm the pin took. A mismatch means the release would demand a different
+# macOS than the docs promise.
 minos=$(vtool -show-build "$OUT/gpget-darwin-arm64" 2>/dev/null | awk '/minos/{print $2}')
 echo "  darwin arm64 requires macOS $minos or newer"
+if [ "$minos" != "$MACOSX_DEPLOYMENT_TARGET" ]; then
+  echo "  ERROR: expected minos $MACOSX_DEPLOYMENT_TARGET, got $minos" >&2
+  exit 1
+fi
 
 got=$("$OUT/gpget-darwin-arm64" version)
 echo "  version reports: $got"
