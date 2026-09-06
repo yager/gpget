@@ -24,7 +24,7 @@ ad-hoc 署名したバンドルを組み立て、**その中の実行ファイ�
 `LSUIElement` 指定なので**ウィンドウも Dock アイコンも出ない**。常駐プロセスは
 IOKit の USB 接続通知を待つだけで、**ポーリングはしない**。
 
-**置き場所が `~/Applications` なのは通知のため。**Launch Services が走査しない場所
+**置き場所が `~/Applications` なのは通知のため**。Launch Services が走査しない場所
 (以前は `~/Library/Application Support`)に置くと、`usernoted` がバンドルを検証できず、
 **許可プロンプトを一度も出さないまま拒否**され、その拒否が永続化する
 (2026-09-06 に使い捨てバンドル 13 本で実測)。

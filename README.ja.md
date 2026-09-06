@@ -2,10 +2,10 @@
 
 [English](README.md) | **日本語**
 
-GoPro のメディアを、**microSD を抜かず・バッテリードアを開けず**に PC へ吸い出す CLI。
-GoPro が公開しているローカル HTTP API を有線 USB で叩くだけ。
+GoPro を USB ケーブルで PC につなぎ、撮影素材をディスクに吸い出す。
+**microSD を抜くことも、バッテリードアを開けることもない。**
 
-> **コマンドの出力は英語です。**このドキュメントだけが日本語です。
+> **コマンドの出力は英語です**。このドキュメントだけが日本語です。
 
 > gpget は独立したツールであり、GoPro 社とは無関係です(提携・出資・承認のいずれもありません)。
 > "GoPro" は GoPro, Inc. の商標です。
@@ -14,22 +14,30 @@ GoPro が公開しているローカル HTTP API を有線 USB で叩くだけ�
 
 ## できること
 
-- **増分オフロード** — カメラ内のメディアのうち、保存先にまだ無いものだけを撮影日ごとのフォルダへコピー
-- **中断しても続きから** — Ctrl-C しても、ケーブルが抜けても、再実行すれば途中から再開する
-- **チャプター分割 MP4 のリネーム** — 名前順で並べたときにバラけないファイル名へ(結合はしない)
-- **バースト / インターバル / タイムラプスを 1 単位で扱う** — 数百〜数千枚をまとめてサブフォルダへ
-- **カメラには一切書き込まない** — 完全リードオンリー。削除のコードを持たない
+- **新しい分だけ** — 保存先にまだ無いものを、撮影日ごとのフォルダへ。撮影のたびに走らせるだけ
+- **実行をまたいで再開** — Ctrl-C、ケーブル抜け、ノートを閉じた — 再実行すれば、止まったバイト位置から続く。別の日の実行でも
+- **転送ファイルが壊れにくい** — 一時名で書き、全バイトが揃ってサイズ確認が済んでから本来の名前になる。途中で止まれば `.part` が残るだけで、半端なファイルが完成品に紛れることはない
+- **4GB 超の動画も問題なし** — どんなに大きくても、メモリに載せずそのままディスクへストリームする
+- **軽くて速い** — クラウド同期も変換もしない、ファイルを運ぶだけ。「新しい分だけ」と自動起動と合わせれば、撮影後の片付けはあっという間
+- **バースト / タイムラプス / インターバルを 1 単位で** — 数百〜数千枚が 1 サブフォルダに、一度の操作で入る
+- **チャプター分割 MP4 を名前順に並ぶよう改名** — `GX012495.MP4`, `GX022495.MP4` … を `GX2495_01`, `GX2495_02` に。順番どおり並ぶ(結合はしない)
+- **カメラには一切触れない** — 完全リードオンリー。カード上のものを削除・改名・移動するコードは無い。microSD もバッテリードアも閉じたまま
+
+GoPro 公式のツールはスマホアプリと Web のメディアライブラリで、この用途のデスクトップ
+アプリはもう無い。gpget はその隙間 — 撮影素材を PC に取り込む部分 — を埋める。
 
 ## 動作条件
 
 | | |
 |---|---|
-| カメラ | **GoPro MISSION 1 PRO ILS** で検証。MISSION 1 系 / HERO11〜13 / MAX2 も `/gopro/media/list` を有線で公開していれば動く見込み |
-| 接続 | **USB-C ケーブル**(データ転送対応のもの)。カメラを PC に挿すと有線ネットワークとして見える |
-| OS | macOS / Windows / Linux |
-| 備考 | **レンズや撮影モードは関係ない。**カメラが記録したものをそのまま吸い出す |
+| カメラ | **GoPro MISSION 1 PRO ILS** で検証。MISSION 1 系 / HERO11〜13 / MAX2 も、同じメディア一覧を USB で公開していれば動く見込み |
+| 接続 | **USB-C ケーブル**(データ転送対応のもの。充電専用ケーブルは不可) |
+| macOS | Apple Silicon、macOS 15 以降 |
+| Windows | 64bit、Windows 10 以降 |
+| Linux | x86_64 または aarch64 |
+| 備考 | **レンズや撮影モードは関係ない**。カメラが記録したものをそのまま吸い出す |
 
-**microSD を抜く必要はありません。**メディアモッドを付けたままでも(側面 USB-C がデータを通せば)動きます。
+**microSD を抜く必要はありません**。メディアモッドを付けたままでも(側面 USB-C がデータを通せば)動きます。
 
 ---
 
@@ -38,7 +46,7 @@ GoPro が公開しているローカル HTTP API を有線 USB で叩くだけ�
 [Releases](https://github.com/yager/gpget/releases) からバイナリを1つ取るだけです。
 ランタイムの導入は要りません。
 
-> **ブラウザでダウンロードしないでください。**macOS では、ブラウザ経由で取得した
+> **ブラウザでダウンロードしないでください**。macOS では、ブラウザ経由で取得した
 > ファイルに検疫属性が付き、署名していない gpget は Gatekeeper に止められます。
 > 下の `curl` コマンドで取得すれば、この問題は起きません。
 
@@ -88,84 +96,6 @@ go build -o gpget .
 
 Go 1.21 以降が必要です。macOS では cgo(通知と USB 監視)を使うため、
 `CGO_ENABLED=1`(既定)のままビルドしてください。
-
-### 対応環境
-
-| OS | アーキテクチャ | 下限 |
-|---|---|---|
-| macOS | Apple Silicon | macOS 15 |
-| Windows | x64 | Windows 10 |
-| Linux | x86_64 / aarch64 | systemd(自動起動を使う場合) |
-
-**Windows と Linux は自動起動を実機検証できていません。**手動の `sync` / `get` は
-同じコードを通りますが、`autostart` は未検証です。試された方は
-[Issues](https://github.com/yager/gpget/issues) で結果を教えていただけると助かります
-(手順は [docs/testing.ja.md](docs/testing.ja.md))。
-
-### アップデート
-
-お使いの環境のバイナリをもう一度ダウンロードするだけです(その場で上書きされます)。
-設定は触られません(場所は `gpget config path`)。
-
-#### macOS
-
-```bash
-curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-darwin-arm64
-chmod +x ~/bin/gpget
-gpget version
-```
-
-#### Linux
-
-```bash
-curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-linux-amd64
-chmod +x ~/bin/gpget
-gpget version
-```
-
-aarch64 は `gpget-linux-amd64` を `gpget-linux-arm64` に変えてください。
-
-#### Windows(PowerShell)
-
-```powershell
-curl.exe -L -o "$env:USERPROFILE\bin\gpget.exe" https://github.com/yager/gpget/releases/latest/download/gpget-windows-amd64.exe
-gpget version
-```
-
-「使用中で上書きできない」と出たら、毎分動く自動起動タスクが `gpget.exe` を掴んでいます。
-先に `gpget autostart uninstall` を実行してからダウンロードし直してください。
-
-#### 自動起動を使っている場合
-
-どの OS でも、アップデート後に install をやり直してください:
-
-```
-gpget autostart install
-```
-
-gpget は「接続時に実際に動くもの」の中に自分自身をコピーしているので、そのコピーを
-作り直す必要があります。更新を自動検出して作り直す仕組みは入っていますが、確実なのは
-`install` のやり直しだけで、置き場所や名前が変わる更新では必須です。
-`gpget autostart status` は現在使われているコピーの場所を表示します。
-
-`curl` の URL は常に最新リリースを取りに行くので、どこかの番号を書き換える必要はありません。
-
-### アンインストール
-
-```bash
-gpget autostart uninstall   # 自動起動を有効にしていた場合のみ
-rm ~/bin/gpget
-```
-
-`autostart uninstall` は LaunchAgent(Windows はタスク、Linux は systemd ユニット)と、
-組み立てたアプリバンドルを消します。**設定と、取り込み済みのファイルは残ります。**
-設定も消したい場合は、`gpget config path` が指すフォルダを手で削除してください。
-
-| OS | 設定の場所 |
-|---|---|
-| macOS | `~/Library/Application Support/gpget/` |
-| Windows | `%AppData%\gpget\` |
-| Linux | `~/.config/gpget/` |
 
 ---
 
@@ -232,7 +162,7 @@ G     2026-09-03 08:00  20.1G  [interval ×1000]    GPAA0015…
 └── 2026-09-05_GoPro/
 ```
 
-**日付フォルダはカメラが記録した撮影時刻(壁時計)そのまま。**転送後、ファイルの更新日時も撮影時刻に戻す。
+**日付フォルダはカメラの時計そのまま(記録時の値)**。転送後、ファイルの更新日時も撮影時刻に戻す。
 
 ### 保存先に使えない場所
 
@@ -250,9 +180,12 @@ G     2026-09-03 08:00  20.1G  [interval ×1000]    GPAA0015…
 
 ## 設定
 
+ふだんは開かなくて大丈夫 — `gpget init` が要点を設定し、既定のままで問題ない。
+ここは何かを変えたくなったときの参照用。
+
 ### 場所
 
-`os.UserConfigDir()` + `/gpget/config.ini`。保存先の既定も OS 固有(下記):
+設定ファイルは1つ、OS の標準的な場所に置かれる。既定の保存先も OS 固有(下記):
 
 | OS | 設定ファイル | 既定の保存先 |
 |---|---|---|
@@ -260,8 +193,8 @@ G     2026-09-03 08:00  20.1G  [interval ×1000]    GPAA0015…
 | Windows | `%AppData%\gpget\config.ini` | `%USERPROFILE%\Videos\GoPro` |
 | Linux | `${XDG_CONFIG_HOME:-~/.config}/gpget/config.ini` | `$XDG_VIDEOS_DIR/GoPro`(既定 `~/Videos/GoPro`) |
 
-`--config <path>` で上書き可。それ以外の設定ファイルは見ない(1 箇所に決め打ち)。
-解決順:`--flag` > `config.ini` > 組み込み既定。`gpget config path` で実パスを表示。
+実パスは `gpget config path` で表示。`--config <path>` で別のファイルを指定でき、
+それ以外は見ない。優先順位は `--flag` > `config.ini` > 組み込み既定。
 
 ### config.ini
 
@@ -273,7 +206,7 @@ group_dir  = {stem}                    ; グループ用サブフォルダ(空 =
 sidecars   = gpr,lrv                   ; none | gpr,lrv | all
 overwrite  = skip                      ; skip | rename | replace
 confirm    = true
-timezone   = camera                   ; camera(変換なし) or +9 / -05:30(時計ズレ補正)
+timezone   = camera                   ; camera = カメラの時刻そのまま / +9 / -05:30 で時計ズレ補正
 
 [chapters]
 regroup      = multi                   ; always | multi | never
@@ -290,12 +223,12 @@ mode = notify                          ; notify | auto
 
 `{token}` 置換。`{date:...}` は strftime 指定子。
 
-- `folder` / `group_dir` で使える:`{date:%Y-%m-%d}` `{label}`(実行時 `--label`) `{model}` `{cam}` `{stem}`(グループ代表のファイル名幹)
+- `folder` / `group_dir` で使える:`{date:%Y-%m-%d}` `{label}`(実行時 `--label`) `{model}` `{cam}` `{stem}`(グループの基底ファイル名。例 `GPAA0015`)
 - `chapter_name` で使える:`{prefix}`(`GX` 等) `{clip}`(末尾4桁) `{chapter:02d}` `{date:...}`
 - 保存パス = `<dest>/<folder>/<file>`、グループは `<dest>/<folder>/<group_dir>/<frame>`
-- **`{date:...}` の基準**:GoPro の `cre` はカメラの壁時計そのもの(UTC のフリで encode されている)。
-  gpget は変換せずその年月日時分秒を使う。カメラの時計が現地時刻に合っていれば常に正しい。
-  時計がズレていた/旅行先の時計だった場合だけ `timezone = +9` のようなオフセットで補正する
+- **`{date:...}` の基準**:カメラが記録した時刻そのもの。カメラの時計が現地時刻に
+  合っていれば正しい。ズレていた/別の時間帯に設定されていた場合だけ、
+  `timezone = +9` のようなオフセットで補正する
 
 ### `gpget init`
 
@@ -317,97 +250,79 @@ Confirm before transferring (y/n)         [y]:
 
 ## 接続時自動起動
 
+オプション機能で、**`gpget autostart install` を実行するまでは無効**。有効にすると、
+カメラを挿すたびに gpget が自分で走るので、取り込みを覚えておく必要がなくなる。
+
+挿したときの動作は config の `[autostart] mode` で決まる:
+
+- **`notify`(既定)** — 未取得の分を数えてデスクトップ通知を出すだけ。転送はしない。
+  ファイルが欲しいときは自分で `gpget sync` を実行する
+- **`auto`** — 新しい分を確認なしで全部転送し、完了 / 失敗を通知する
+
+どちらの場合も、カメラに新規メディアが無い / 応答しないなら何もしない
+(充電目的で挿しても無害)。同一接続での多重発火は、ケーブルを抜くまで抑制される。
+
+カメラの検知方法と、必要になる許可は OS ごとに違う。特に macOS には癖がある。
+以下、OS ごとに説明する。
+
 ```bash
-gpget autostart install       # OS に合わせたトリガーを登録
-gpget autostart status        # 有効/無効・mode・転送中かどうか
-gpget autostart log           # ログの末尾(現行と .old を通して見る)
-gpget autostart log --follow  # 追従
+gpget autostart install       # OS に合わせて設定する
+gpget autostart status        # 有効/無効・mode・いま転送中かどうか
+gpget autostart log           # 最近のログ
+gpget autostart log --follow  # ログを追い続ける
 gpget autostart uninstall
-gpget autostart install --print   # 登録内容(plist / タスク / unit)を出力するだけ
+gpget autostart install --print   # 登録せず、登録内容だけ出力する
 ```
 
-### macOS — ウィンドウは出ない。通知だけが出る
+### macOS
 
-launchd から起動されたバックグラウンドプロセスは、「ローカルネットワーク」プライバシーで
-カメラ(172.x)への接続を無音で拒否される。許可プロンプトも出ないし、設定でトグルを ON に
-しても効かない。**裸の実行ファイルには、macOS が許可を紐づける「アプリの身元」が
-無いため。**
+`gpget autostart install` は **`~/Applications/gpget.app`** を作り、
+バックグラウンドで動くよう登録する。これは「gpget をもう一度インストールしたもの」
+ではなく、macOS でバックグラウンドサービスを動かすのに必要な形というだけ。
+(カメラへの接続と通知の許可は「アプリ」に対して与えられ、素の実行ファイルは
+受け取れない。中身は手元の gpget から組み立てる。)
 
-そこで `gpget autostart install` は **`~/Applications/gpget.app`** に小さなアプリ
-バンドルを組み立てて ad-hoc 署名し、その**中の** gpget を LaunchAgent から起動する。
-身元があるので通信が許可される。配布物は単一バイナリのままで、バンドルはローカルで
-組み立てられる。
+ウィンドウも Dock アイコンもメニューバー項目も出ない。ケーブルを挿してから 1〜2 秒で
+反応する。アプリを消しても安全で、`gpget autostart install` で作り直せる。
 
-このバンドルは `LSUIElement` 指定なので、**ウィンドウも Dock アイコンもメニューバー
-項目も出ない。**常駐して IOKit の USB 通知(GoPro のベンダー ID `0x2672`)を待つ。
-**ポーリングはしない。**ケーブルを挿した瞬間に動きだす。
+#### 初回だけ、許可を 2 つ出す
 
-#### 通知の許可 — ここが一番間違えやすい
+**ローカルネットワーク** — 普通のダイアログが出る。「許可」を押すだけ。
 
-初回に許可を 2 つ聞かれるが、見た目がまるで違う。
+**通知** — 画面右上に**バナー**が出る。タイトルが「gpget」、本文が
+「テキスト、サウンド、アイコンバッジにより通知されます」。お知らせに見えるが、
+これが許可の要求である。
 
-**ローカルネットワーク**は普通のダイアログ。「許可」を押すだけ。
+- バナーにポインタを乗せ、「オプション」メニューを開いて**許可を選ぶ**
+- バナー本体をクリックすると設定画面が開くだけで、許可にはならない
 
-**通知は右上のバナー**で、タイトルが「gpget」、本文が「テキスト、サウンド、
-アイコンバッジにより通知されます」。質問に見えないが、これが許可要求:
-
-- バナーの**「オプション」**メニューを開いて**「許可」**を選ぶ
-- **バナー本体をクリックすると設定画面が開くだけで、許可したことにはならない**
-- **60 秒で消え、放置すると「拒否」として記録される。**以後 macOS は二度と聞いてこない
-
-**画面を収録している場合は注意。**macOS は画面収録をディスプレイの共有と同じ扱いにし、
-**収録に写り込まないようバナーを黙って抑制する。**gpget が壊れているように見えるが、
-通知は配信されていて通知センターには入っている。画面に出ないだけ。収録するなら先に
-**システム設定 > 通知 > 「ディスプレイをミラーリングまたは共有しているときに通知を許可」**
-(一番下、既定 OFF)を ON にする。
-
-見逃したら **システム設定 > 通知 > gpget** を手で ON にする。
 `gpget autostart install` は最後にテスト通知を送り、**それが本当に通ったかを表示する**
-ので、「許可されている」と「黙って無効」を取り違えずに済む。
+ので、「許可されている」と「黙って無効」を取り違えずに済む。「許可がない」と出たら
+[うまくいかないとき](#うまくいかないとき)を参照。
 
-`~/Applications` に置く理由: macOS は通知を出す前に Launch Services のデータベースで
-バンドルを引く。Launch Services が見ていないディレクトリに置くと、要求はその場で
-拒否され、**プロンプト自体が一度も出ない。**
-
-| mode | 動作 |
-|---|---|
-| **`notify`(既定)** | 未取得件数を数えて通知するだけ(転送しない) |
-| **`auto`** | 転送する。進捗は同じ通知を差し替え(約10件ごと、または約15秒ごと)、完了 / 失敗で置き換える。ファイル単位はログへ |
-
-- 通知は gpget.app 自身の名義で出す(`UserNotifications`)。システム設定 > 通知 に
-  「gpget」として並ぶ。**Homebrew などの追加インストールは不要**
-- **失敗も必ず通知する。**ウィンドウが無いので、黙って終わると成功と区別できない
-- アプリ実体:`~/Applications/gpget.app`(再インストールで作り直し)。
-  Finder から見える普通のフォルダで、消しても安全(`gpget autostart install` で作り直せる)
-- ログは `gpget autostart log` で見る(現行と `.old` を通した末尾。約 1MB で `.old` に1世代)。
-  場所は `gpget autostart status` にも出る
-- 転送中かどうかは `gpget autostart status`(保存先の `.gpget.lock` を見る)
-
-**既知の macOS 不具合:** gpget を更新するとコード署名が変わり、更新直後の 1 回目の
-接続だけが拒否されることがある。gpget は黙って再試行して復帰する(最大 3 回)。
-まれに「システム設定 > ローカルネットワーク」に同名項目が複数でき、すべて ON なのに
-拒否され続けることがある。この場合の復旧はリカバリーモードが必要で、gpget 側では防げない。
+- 通知は gpget 自身の名義で出る。システム設定 > 通知 に「gpget」として並ぶ。
+  **Homebrew などの追加インストールは不要**
+- `auto` では進捗通知が同じ場所で更新される(だいたい10件ごと、または15秒ごと)。
+  ファイル単位はログへ
+- **失敗も必ず通知する**。ウィンドウが無いので、黙って終わると成功と区別できない
 
 ### Windows / Linux — バックグラウンドで完結
 
-プライバシーゲートが無いので、トリガー(タスクスケジューラ / systemd user timer、
-どちらも 1 分間隔ポーリング)が `autostart run` を直接叩き、その場で `media/list` を数えて
-デスクトップ通知を出す。**未検証**(`--print` で機構を出力できるので手動登録も可)。
+`gpget autostart install` が、毎分カメラを確認するタスクを登録する
+(Windows はタスクスケジューラ、Linux は systemd user timer)。上の `mode` に従って動き、
+待っている間は何も表示しない。通知は Windows が PowerShell のトースト、Linux が
+`notify-send`(通知デーモンが必要)。どちらも出せなければログへ。
 
-| mode | 動作 |
-|---|---|
-| **`notify`(既定)** | 未取得件数を数えて通知するだけ(転送しない) |
-| **`auto`** | 転送する。進捗は同じ通知を差し替え、完了 / 失敗で置き換える。ファイル単位はログへ |
+**まだ実機(Windows / Linux)で検証できていません。** 手動の `sync` / `get` は
+同じコードなので問題なく、未検証なのは `autostart` だけです。試された方は
+[結果を報告](https://github.com/yager/gpget/issues)いただけると助かります
+(手順は [docs/testing.ja.md](docs/testing.ja.md))。手動登録したい場合は
+`gpget autostart install --print` で登録内容を出せます。
 
-通知:Windows=PowerShell の WinRT トースト、Linux=`notify-send`(通知デーモン必須)、
-出せなければ stderr。
+### ログ
 
-### 共通
-
-- 未取得メディアが無い / カメラ未応答なら何もしない。「充電だけ」で挿しても無害
-- 同一接続の多重発火は状態ファイル(`os.UserCacheDir()/gpget/autostart*.state`)で抑制。
-  ケーブルを抜くと解除され、次に挿すとまた発火する
-- 転送の確認: `gpget autostart status`(ロック) と `gpget autostart log`(現行と `.old` を通した末尾。`--follow` で追従)
+`gpget autostart log` で見る(`--follow` で追い続ける)。いま転送中かどうかは
+`gpget autostart status`。
 
 | OS | ログファイル |
 |---|---|
@@ -417,41 +332,79 @@ launchd から起動されたバックグラウンドプロセスは、「ロー
 
 ---
 
+## アップデートとアンインストール
+
+### アップデート
+
+お使いの環境のバイナリをもう一度ダウンロードするだけ(その場で上書きされる)。設定は触られない。
+
+#### macOS
+
+```bash
+curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-darwin-arm64
+chmod +x ~/bin/gpget
+gpget version
+```
+
+#### Linux
+
+```bash
+curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-linux-amd64
+chmod +x ~/bin/gpget
+gpget version
+```
+
+aarch64 は `gpget-linux-arm64` を使ってください。
+
+#### Windows(PowerShell)
+
+```powershell
+curl.exe -L -o "$env:USERPROFILE\bin\gpget.exe" https://github.com/yager/gpget/releases/latest/download/gpget-windows-amd64.exe
+gpget version
+```
+
+「使用中で上書きできない」と出たら、自動起動タスクが `gpget.exe` を掴んでいます。
+先に `gpget autostart uninstall` を実行してからダウンロードし直してください。
+
+**自動起動を使っている場合**は、そのあと `gpget autostart install` をやり直します。
+gpget は「接続時に動くもの」の中に自分自身をコピーしているので、そのコピーを
+作り直す必要があります。
+
+### アンインストール
+
+```bash
+gpget autostart uninstall   # 有効にしていた場合のみ
+rm ~/bin/gpget
+```
+
+これで自動起動のトリガーと、macOS ではそれが作ったアプリバンドルが消えます。
+**設定と、取り込み済みのファイルは残ります。** 設定も消したい場合は、
+`gpget config path` が指すフォルダを手で削除してください。
+
+| OS | 設定の場所 |
+|---|---|
+| macOS | `~/Library/Application Support/gpget/` |
+| Windows | `%AppData%\gpget\` |
+| Linux | `~/.config/gpget/` |
+
+---
+
 ## うまくいかないとき
 
 **カメラが見つからない**
 
 ```bash
-gpget probe        # 見つかった IF / IP、camera/info、media/list の到達可否を表示
+gpget probe        # 見つかったネットワークと IP、カメラ情報、ファイル一覧が取れるか
 ```
 
-- **ケーブルがデータ転送に対応しているか。**充電専用ケーブルだと、カメラ側に「USB 接続済み」と出ても PC からは見えない
+- **ケーブルがデータ転送に対応しているか**。充電専用ケーブルだと、カメラ側に「USB 接続済み」と出ても PC からは見えない
 - カメラの電源が入っているか
 - `gpget --ip <addr>` で直接指定できる
-
-**通知が一度も出ない(macOS)**
-
-```bash
-"$HOME/Applications/gpget.app/Contents/MacOS/gpget" autostart test-notify
-```
-
-PATH の `gpget` ではなく**バンドルの中のコピー**を実行すること。gpget 名義で
-通知を出せるのはそれだけ。macOS 自身が申告する設定値が出るので、推測しなくて済む。
-
-```
-authorizationStatus  2   (2 = 許可)
-alertSetting         2   (2 = 有効)
-alertStyle           1   (1 = バナー)
-```
-
-これらが正常なのに何も見えないときは、**画面を収録・共有していないか**を確認する。
-その間 macOS はバナーを抑制する。設定はシステム設定 > 通知 の一番下。
 
 **Docker や VPN と IP が衝突する**
 
 カメラは `172.16〜172.31` のプライベート帯に現れる。Docker のブリッジや VPN も同じ帯を使うことがある。
-gpget は候補ごとに `camera/info` を叩いて GoPro であることを確認してから使うが、
-複数残る場合は `--ip` で指定する。
+gpget は候補が本当に GoPro かを確認してから使うが、複数残る場合は `--ip` で指定する。
 
 **保存先が拒否される**
 
@@ -465,6 +418,49 @@ gpget sync         # 再実行すれば続きから再開する
 ```
 
 `.part` は勝手に消さない。消したいときは `--clean`。
+
+### 自動起動(macOS)
+
+**通知が一度も出ない**
+
+原因は 3 つ。可能性の高い順に。
+
+**1. 許可のバナーを見逃した**。バナーは 1 分ほどで消え、放置すると「拒否」として
+記録される。以後 macOS は聞いてこない。手で ON にする。
+
+```
+システム設定 > 通知 > gpget
+```
+
+**2. 画面を収録・共有している**。macOS は画面収録(QuickTime Player など)を
+ディスプレイの共有と同じ扱いにし、**収録に写り込まないようバナーを抑制する。**
+gpget が壊れているように見えるが、通知は配信されていて通知センターには入っている。
+画面に出ないだけ。**システム設定 > 通知 > 「ディスプレイをミラーリングまたは
+共有しているときに通知を許可」**(一番下、既定 OFF)を ON にする。
+
+**3. それ以外**。macOS に直接聞く。
+
+```bash
+"$HOME/Applications/gpget.app/Contents/MacOS/gpget" autostart test-notify
+```
+
+PATH の `gpget` ではなく**バンドルの中のコピー**を実行すること。gpget 名義で
+通知を出せるのはそれだけ。macOS 自身が申告する値が出るので、推測しなくて済む。
+
+```
+authorizationStatus  2   (2 = 許可)
+alertSetting         2   (2 = 有効)
+alertStyle           1   (1 = バナー)
+```
+
+**更新したら自動起動が動かなくなった**
+
+gpget を更新するとコード署名が変わり、macOS が別のアプリとして扱うことがある。
+たいていはエージェントが自分で再試行して復帰する(`gpget autostart log` に再試行が残る)。
+
+まれに「システム設定 > ローカルネットワーク」に同名項目が複数でき、すべて ON なのに
+拒否され続けることがある。**この状態は gpget 側では防げず、直せない。**
+復旧にはリカバリーモードが必要になる。
 
 ---
 

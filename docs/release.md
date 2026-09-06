@@ -39,10 +39,10 @@ gh repo create gpget --public --source=. --remote=origin --push
 
 ## 1. バージョンを決めてタグを打つ
 
-**0.x の間は、コマンドの形と設定ファイルの項目が変わってよい。**gpget にとっての
+**0.x の間は、コマンドの形と設定ファイルの項目が変わってよい**。gpget にとっての
 「互換性」はライブラリ API ではなくそこなので、固まるまでは 0.x を維持する。
 
-**プレリリース指定(`--prerelease`)は使わない。**GitHub の `releases/latest/` は
+**プレリリース指定(`--prerelease`)は使わない**。GitHub の `releases/latest/` は
 プレリリースを飛ばすため、README に書いた `latest/download/...` の
 インストールコマンドが解決しなくなる。検証状況はリリースノートと README で伝える。
 
@@ -92,7 +92,7 @@ git tag v0.1.0
   26 系でした。
 
   固定していないと、**この Mac を macOS 26 に上げた瞬間、リリースが黙って
-  macOS 26 以上を要求するようになります。**ビルドは成功し、検査も通り、
+  macOS 26 以上を要求するようになります**。ビルドは成功し、検査も通り、
   README には「macOS 15 以降」と書いてあるまま。そのため
   `MACOSX_DEPLOYMENT_TARGET` をスクリプト内で明示しています。
 
@@ -130,7 +130,7 @@ alertStyle 1` が正常)。画面に本当に出たかは、管理者アカウ�
 log show --last 2m --info --predicate 'subsystem == "com.apple.unc"' | grep -i "gpget" | grep "displaying as banner"
 ```
 
-**画面収録しながら確認しないこと。**macOS は収録中バナーを抑制する
+**画面収録しながら確認しないこと**。macOS は収録中バナーを抑制する
 (`docs/design.md` 参照)。収録したまま確かめて「通知が出ない」と誤診した事例がある。
 
 Windows / Linux は手元に環境が無ければここでは確認できません。

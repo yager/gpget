@@ -121,7 +121,7 @@ GoPro のカメラを USB / WiFi 経由のローカル HTTP API で操作する�
 | 19 | Burst | 36 | Low Light |
 | 22 | Broadcast Record | 23 | Broadcast |
 
-**「Night Lapse」「Time Lapse」という名前のモードは存在しない。**タイムラプス系は
+**「Night Lapse」「Time Lapse」という名前のモードは存在しない**。タイムラプス系は
 Motion(24)/ Stationary(13)の 2 つ。公式スペックの
 "Night Lapse — Consolidated With Time Lapse" と一致する。
 
@@ -222,7 +222,7 @@ HERO 系の 3 グループ構成とは違うので、他機種対応時の注意
     削除した `GPAD0100.JPG` のサイズと完全一致)
   - `(b..l) − m` = 3 枚を展開 → `HEAD` 3/3 成功 → 合計 17,191,943 で **`s` と完全一致**
   - **削除済みフレームへの GET / HEAD は `404`**。前後のフレームは `200`
-  - → **`m` を無視して `b`..`l` を全部叩くと 404 で失敗する。**欠番のあるグループを
+  - → **`m` を無視して `b`..`l` を全部叩くと 404 で失敗する**。欠番のあるグループを
     扱うクライアントは、展開時に `m` の番号を必ず除外すること
 
 `media/info` の `ct` の実測値(ILS FW `H26.03.03.00.00`):

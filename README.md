@@ -2,9 +2,8 @@
 
 **English** | [日本語](README.ja.md)
 
-A CLI that pulls media off a GoPro **without removing the microSD card or opening
-the battery door**. It talks to the local HTTP API that GoPro already exposes,
-over a wired USB connection.
+Connect a GoPro to your computer with a USB cable and copy the shoot onto your
+disk — **without taking out the microSD card or opening the battery door**.
 
 > gpget is an independent tool and is not affiliated with, sponsored by, or
 > endorsed by GoPro. "GoPro" is a trademark of GoPro, Inc.
@@ -13,26 +12,41 @@ over a wired USB connection.
 
 ## What it does
 
-- **Incremental offload** — copies only the media that is not already in your
-  destination, into folders by capture date
-- **Resumes after an interruption** — Ctrl-C, a pulled cable: run it again and it
-  picks up where it stopped
-- **Renames chaptered MP4s** — so they sort correctly by name (it does not join them)
-- **Treats bursts, intervals and timelapses as one unit** — hundreds or thousands
-  of frames go into a single subfolder
-- **Never writes to the camera** — strictly read-only; there is no delete code
+- **Only the new stuff** — copies what is not already in your destination, filed
+  by capture date. Run it after every shoot
+- **Resumes across runs** — Ctrl-C, a pulled cable, a closed laptop: run it again
+  and it continues from the byte it stopped at, even in a later session
+- **Transfers don't leave broken files** — each file is written under a temporary
+  name and renamed only once every byte is in and the size checks out. An
+  interruption leaves a `.part`, never a file that looks done but is not
+- **4GB+ videos are fine** — each file is streamed straight to disk, never held
+  in memory, no matter the size
+- **Light and quick** — no cloud sync, no transcoding: it just moves files. With
+  "only the new stuff" and autostart, clearing a shoot goes fast
+- **Bursts, timelapses and intervals as one unit** — hundreds or thousands of
+  frames land in one subfolder, in a single step
+- **Chaptered MP4s renamed to sort right** — `GX012495.MP4`, `GX022495.MP4` …
+  become `GX2495_01`, `GX2495_02`, so they line up in order (it does not join them)
+- **Never touches the camera** — strictly read-only. Nothing on the card is
+  deleted, renamed or moved, and the microSD and battery door stay shut
+
+GoPro's own tools are the phone app and the web media library; there is no
+desktop app from GoPro for this anymore. gpget fills that one gap — getting a
+shoot onto a computer.
 
 ## Requirements
 
 | | |
 |---|---|
-| Camera | Verified on the **GoPro MISSION 1 PRO ILS**. Other MISSION 1 models, HERO11–13 and MAX2 should work if they expose `/gopro/media/list` over the wire |
-| Connection | A **USB-C cable that carries data**. The camera appears as a wired network interface |
-| OS | macOS / Windows / Linux |
-| Note | **Lenses and capture modes are irrelevant.** gpget copies whatever the camera recorded |
+| Camera | Verified on the **GoPro MISSION 1 PRO ILS**. Other MISSION 1 models, HERO11–13 and MAX2 should work if they expose the same media list over USB |
+| Connection | A **USB-C cable that carries data** (not a charge-only one) |
+| macOS | Apple Silicon, macOS 15 or newer |
+| Windows | 64-bit, Windows 10 or newer |
+| Linux | x86_64 or aarch64 |
+| Note | **Lenses and capture modes do not matter.** gpget copies whatever the camera recorded |
 
-**You never have to take the microSD card out.** It also works with a media mod
-attached, as long as the side USB-C port passes data.
+**You never take the microSD card out.** It also works with a media mod attached,
+as long as the side USB-C port passes data.
 
 ---
 
@@ -91,88 +105,6 @@ go build -o gpget .
 
 Go 1.21 or newer. On macOS, build with cgo enabled (`CGO_ENABLED=1`, the default):
 notifications and USB watching need it.
-
-### Supported targets
-
-| OS | Architecture | Minimum |
-|---|---|---|
-| macOS | Apple Silicon | macOS 15 |
-| Windows | x64 | Windows 10 |
-| Linux | x86_64 / aarch64 | systemd (only for autostart) |
-
-**Autostart has not been tested on real Windows or Linux machines.** Manual `sync`
-and `get` go through the same code, but `autostart` is unverified there. If you
-try it, please report what happened in
-[Issues](https://github.com/yager/gpget/issues) — the steps are in
-[docs/testing.md](docs/testing.md).
-
-### Updating
-
-Re-download the binary for your platform — it overwrites in place. Your
-configuration is not touched (`gpget config path` prints where it lives).
-
-#### macOS
-
-```bash
-curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-darwin-arm64
-chmod +x ~/bin/gpget
-gpget version
-```
-
-#### Linux
-
-```bash
-curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-linux-amd64
-chmod +x ~/bin/gpget
-gpget version
-```
-
-On aarch64, change `gpget-linux-amd64` to `gpget-linux-arm64`.
-
-#### Windows (PowerShell)
-
-```powershell
-curl.exe -L -o "$env:USERPROFILE\bin\gpget.exe" https://github.com/yager/gpget/releases/latest/download/gpget-windows-amd64.exe
-gpget version
-```
-
-If the download fails with the file in use, the every-minute autostart task is
-holding `gpget.exe` — run `gpget autostart uninstall` first, then re-download.
-
-#### If you use autostart
-
-Re-run the install afterwards, on any OS:
-
-```
-gpget autostart install
-```
-
-gpget copies itself into the thing that actually runs on connect, so that copy
-has to be refreshed. It usually notices an update on its own, but re-running
-`install` is the only way to be sure — and after an update that moves or renames
-anything, it is required. `gpget autostart status` prints the copy currently in
-use.
-
-The `curl` URLs always fetch the newest release, so there is no version number to
-bump anywhere.
-
-### Uninstalling
-
-```bash
-gpget autostart uninstall   # only if you enabled it
-rm ~/bin/gpget
-```
-
-`autostart uninstall` removes the LaunchAgent (or scheduled task / systemd unit)
-and the app bundle it built. Your config and everything you already offloaded
-are left alone. To remove the configuration too, delete the folder
-`gpget config path` points at:
-
-| OS | Configuration |
-|---|---|
-| macOS | `~/Library/Application Support/gpget/` |
-| Windows | `%AppData%\gpget\` |
-| Linux | `~/.config/gpget/` |
 
 ---
 
@@ -242,7 +174,7 @@ By default everything is filed by capture date:
 └── 2026-09-05_GoPro/
 ```
 
-**The date comes from the camera's own wall clock**, exactly as recorded. After a
+**The folder date is the camera's own clock, exactly as it recorded it.** After a
 transfer, gpget also sets each file's modification time back to the capture time.
 
 ### Destinations gpget refuses
@@ -262,10 +194,13 @@ An external SSD is a good choice.
 
 ## Configuration
 
+Most people never open this — `gpget init` sets the essentials and the defaults
+are fine. This is the reference for when you want to change something.
+
 ### Where it lives
 
-`os.UserConfigDir()` + `/gpget/config.ini`. The default destination is
-OS-specific too:
+One config file, in the usual place for your OS. The default destination is
+per-OS too:
 
 | OS | Config file | Default destination |
 |---|---|---|
@@ -273,9 +208,9 @@ OS-specific too:
 | Windows | `%AppData%\gpget\config.ini` | `%USERPROFILE%\Videos\GoPro` |
 | Linux | `${XDG_CONFIG_HOME:-~/.config}/gpget/config.ini` | `$XDG_VIDEOS_DIR/GoPro` (default `~/Videos/GoPro`) |
 
-`--config <path>` overrides it. No other config file is read — there is exactly
-one location. Resolution order: `--flag` > `config.ini` > built-in default.
-`gpget config path` prints the real path.
+`gpget config path` prints the exact path. `--config <path>` points at a
+different file; nothing else is read. Order of precedence: a `--flag` beats
+`config.ini`, which beats the built-in default.
 
 ### config.ini
 
@@ -287,7 +222,7 @@ group_dir  = {stem}                    ; subfolder for a group (empty = directly
 sidecars   = gpr,lrv                   ; none | gpr,lrv | all
 overwrite  = skip                      ; skip | rename | replace
 confirm    = true
-timezone   = camera                    ; camera (no conversion) or +9 / -05:30 to correct a wrong clock
+timezone   = camera                    ; camera = the camera's own time; or +9 / -05:30 to correct a wrong clock
 
 [chapters]
 regroup      = multi                   ; always | multi | never
@@ -305,16 +240,15 @@ mode = notify                          ; notify | auto
 `{token}` substitution. `{date:...}` takes strftime specifiers.
 
 - In `folder` and `group_dir`: `{date:%Y-%m-%d}`, `{label}` (from `--label`),
-  `{model}`, `{cam}`, `{stem}` (the group's representative filename stem)
+  `{model}`, `{cam}`, `{stem}` (a group's base filename, e.g. `GPAA0015`)
 - In `chapter_name`: `{prefix}` (`GX` etc.), `{clip}` (last 4 digits),
   `{chapter:02d}`, `{date:...}`
 - Output path: `<dest>/<folder>/<file>`, group frames
   `<dest>/<folder>/<group_dir>/<frame>`
-- **What `{date:...}` is based on:** GoPro's `cre` is the camera's wall clock,
-  encoded as if it were UTC. gpget uses those digits without converting them, so
-  the result is right whenever the camera clock is set to local time. Use an
-  offset like `timezone = +9` only when the clock was wrong or set for another
-  time zone.
+- **What `{date:...}` is based on:** the camera's own clock, as it recorded it.
+  That is right as long as the camera's clock is set to your local time. If it
+  was wrong, or set for another time zone, correct it with an offset like
+  `timezone = +9`.
 
 ### `gpget init`
 
@@ -336,117 +270,91 @@ Confirm before transferring (y/n)         [y]:
 
 ## Autostart on connect
 
+Optional, and **off until you run `gpget autostart install`**. Once enabled,
+gpget runs on its own whenever you plug the camera in, so offloading is not
+something you have to remember.
+
+What it does on connect is set by `[autostart] mode` in the config:
+
+- **`notify`** (the default) — checks what has not been offloaded yet and shows a
+  desktop notification. It transfers nothing; you still run `gpget sync` when you
+  want the files
+- **`auto`** — transfers everything new with no prompt, then notifies you when it
+  finishes or if it fails
+
+Either way, if the camera has nothing new or does not answer, gpget does nothing
+— plugging in only to charge is harmless. Repeated firing on one connection is
+suppressed until you unplug.
+
+How it detects the camera, and what it needs your permission for, differ by OS —
+macOS especially has rough edges. The sections below cover each one.
+
 ```bash
-gpget autostart install       # register the trigger for your OS
-gpget autostart status        # enabled/disabled, mode, whether a transfer is running
-gpget autostart log           # tail of the log (current file and .old together)
-gpget autostart log --follow  # keep following it
+gpget autostart install       # set it up for your OS
+gpget autostart status        # on/off, mode, whether a transfer is running now
+gpget autostart log           # recent log lines
+gpget autostart log --follow  # keep watching the log
 gpget autostart uninstall
-gpget autostart install --print   # just print what would be registered
+gpget autostart install --print   # print the trigger definition instead of installing
 ```
 
-### macOS — no window, only a notification
+### macOS
 
-A background process started by launchd is silently denied access to the camera
-(172.x) by macOS Local Network privacy. No permission prompt appears, and
-flipping the toggle in System Settings does not help — **a bare executable has
-no app identity for macOS to attach the permission to.**
+`gpget autostart install` creates **`~/Applications/gpget.app`** and registers it
+to run in the background. This is not a second copy to install — it is just how
+the background service has to be packaged on macOS. (The camera connection and
+notifications need an *app* for macOS to grant permission to; a plain
+command-line binary cannot receive it. It is built from the gpget you already
+have.)
 
-So `gpget autostart install` builds a small app bundle at
-**`~/Applications/gpget.app`**, ad-hoc signs it, and registers a LaunchAgent that
-runs the copy of gpget *inside* that bundle. It has an identity, so the
-connection is allowed. What you download is still a single binary; the bundle is
-assembled locally.
+It shows no window, no Dock icon and no menu bar item, and reacts within a second
+or two of the cable going in. Deleting the app is safe — `gpget autostart
+install` builds it again.
 
-The bundle is marked `LSUIElement`, so **no window, no Dock icon, no menu bar
-item**. It stays resident and waits on an IOKit USB notification for GoPro's
-vendor ID (0x2672) — **there is no polling**, and offloading starts the moment
-you plug the camera in.
+#### The first time: allow two permissions
 
-#### Allow notifications — this part is easy to get wrong
+**Local network** — an ordinary dialog. Click **Allow**.
 
-macOS asks for two permissions on the first run, and they do not look alike.
+**Notifications** — a **banner** at the top right, titled "gpget", saying that
+notifications may include text, sounds and icon badges. It reads like an
+announcement, but it is the permission request:
 
-**Local network** is an ordinary dialog. Click Allow.
-
-**Notifications is a banner at the top right**, titled "gpget", saying that
-notifications may include text, sounds and icon badges. It does not look like a
-question, but it is one:
-
-- Open the **"Options"** menu on that banner and choose **Allow**
-- **Clicking the banner itself only opens System Settings** — it does not grant
+- Move the pointer over it, open the **"Options"** menu, and choose **Allow**
+- Clicking the banner itself only opens System Settings; it does not allow
   anything
-- **The banner disappears after 60 seconds, and letting it expire is recorded as
-  a refusal.** macOS will not ask again
 
-**Recording your screen?** macOS treats screen recording the same as sharing
-your display and **silently suppresses banners** so they cannot leak into the
-recording. gpget will look broken: the notification is delivered, lands in
-Notification Center, and nothing appears on screen. Turn on **System Settings >
-Notifications > Allow notifications when mirroring or sharing the display** (the
-bottom section, off by default) before you record.
+`gpget autostart install` finishes by sending a test notification and tells you
+whether it actually went through, so you can tell "allowed" apart from "silently
+off". If it says gpget does not have permission, see
+[When something goes wrong](#when-something-goes-wrong).
 
-If you miss it, turn gpget on by hand in **System Settings > Notifications >
-gpget**. `gpget autostart install` ends by sending a test notification and tells
-you whether it really went through, so you can tell the difference between
-"allowed" and "silently off".
-
-Why `~/Applications` and not somewhere hidden: macOS looks the bundle up in the
-Launch Services database before it will let it post as itself. From a directory
-Launch Services does not scan, the notification request is refused outright and
-no prompt is ever shown.
-
-| mode | behaviour |
-|---|---|
-| **`notify`** (default) | counts what is not offloaded yet and notifies. Transfers nothing |
-| **`auto`** | transfers. Progress replaces the same notification (about every 10 files or 15 seconds), then becomes the completion or failure message. Per-file detail goes to the log |
-
-- Notifications are posted by gpget.app itself (`UserNotifications`), so it shows
-  up as "gpget" in System Settings > Notifications. **No Homebrew package or
-  other extra install is needed**
+- Notifications come from gpget itself, so it shows up as "gpget" in
+  System Settings > Notifications. **No Homebrew package or other extra install
+  is needed**
+- In `auto` mode the progress notification replaces itself as it goes (roughly
+  every 10 files or 15 seconds); per-file lines go to the log
 - **Failures are always notified.** With no window, finishing quietly would be
   indistinguishable from success
-- The app lives at `~/Applications/gpget.app` and is rebuilt on reinstall. It is
-  a normal folder you can look at, and deleting it is safe — `gpget autostart
-  install` builds it again
-- Read the log with `gpget autostart log` (current file plus one `.old`
-  generation, rotated at about 1 MB). `gpget autostart status` prints its path
-- `gpget autostart status` also tells you whether a transfer is in progress, by
-  looking at `.gpget.lock` in the destination
-
-**A known macOS bug:** updating gpget changes its code signature, and the first
-connection right after an update is sometimes refused. gpget retries quietly and
-recovers (up to three attempts). More rarely, System Settings > Local Network
-ends up with several entries of the same name, all switched on, yet connections
-keep being denied. Recovering from that needs Recovery mode; gpget cannot prevent
-it.
 
 ### Windows and Linux — handled in the background
 
-There is no privacy gate here, so the trigger (Task Scheduler or a systemd user
-timer, both polling once a minute) runs `autostart run` directly: it counts
-`media/list` on the spot and raises a desktop notification.
-**This is unverified** — `--print` emits the trigger definition if you would
-rather register it by hand.
+`gpget autostart install` registers a scheduled task (Task Scheduler on Windows,
+a systemd user timer on Linux) that checks for the camera once a minute and acts
+on the `mode` above. Nothing is shown while it waits. Notifications are a
+PowerShell toast on Windows and `notify-send` on Linux (which needs a
+notification daemon); if neither works, the message goes to the log.
 
-| mode | behaviour |
-|---|---|
-| **`notify`** (default) | counts what is not offloaded yet and notifies. Transfers nothing |
-| **`auto`** | transfers, replacing the same notification as it goes, then completion or failure. Per-file detail goes to the log |
+**This has not been tested on real Windows or Linux hardware yet.** Manual `sync`
+and `get` use the same code and are fine; only `autostart` is unverified. If you
+try it, please [report what happened](https://github.com/yager/gpget/issues) —
+the steps are in [docs/testing.md](docs/testing.md). `gpget autostart install
+--print` shows the exact task it would register, if you would rather set it up by
+hand.
 
-Notifications use a WinRT toast via PowerShell on Windows and `notify-send` on
-Linux (which needs a notification daemon). If neither works, the message goes to
-stderr.
+### The log
 
-### Both platforms
-
-- If nothing new is on the camera, or the camera does not answer, gpget does
-  nothing. Plugging in "just to charge" is harmless
-- Repeated firing on one connection is suppressed with a state file
-  (`os.UserCacheDir()/gpget/autostart*.state`). Unplugging clears it, so the next
-  connect fires again
-- To check a transfer: `gpget autostart status` (the lock) and
-  `gpget autostart log` (`--follow` to keep watching)
+`gpget autostart log` shows it (`--follow` to keep watching); `gpget autostart
+status` says whether a transfer is running right now.
 
 | OS | Log file |
 |---|---|
@@ -456,12 +364,70 @@ stderr.
 
 ---
 
+## Updating and uninstalling
+
+### Update
+
+Re-download the binary for your platform — it overwrites in place. Your config is
+untouched.
+
+#### macOS
+
+```bash
+curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-darwin-arm64
+chmod +x ~/bin/gpget
+gpget version
+```
+
+#### Linux
+
+```bash
+curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-linux-amd64
+chmod +x ~/bin/gpget
+gpget version
+```
+
+On aarch64, use `gpget-linux-arm64`.
+
+#### Windows (PowerShell)
+
+```powershell
+curl.exe -L -o "$env:USERPROFILE\bin\gpget.exe" https://github.com/yager/gpget/releases/latest/download/gpget-windows-amd64.exe
+gpget version
+```
+
+If it fails with the file in use, the autostart task is holding `gpget.exe` — run
+`gpget autostart uninstall` first, then re-download.
+
+**If you use autostart**, run `gpget autostart install` again afterwards: gpget
+copies itself into the thing that runs on connect, and that copy has to be
+refreshed.
+
+### Uninstall
+
+```bash
+gpget autostart uninstall   # only if you turned it on
+rm ~/bin/gpget
+```
+
+That removes the autostart trigger and, on macOS, the app bundle it built. Your
+config and everything you already offloaded stay. To remove the config too,
+delete the folder `gpget config path` points at:
+
+| OS | Configuration |
+|---|---|
+| macOS | `~/Library/Application Support/gpget/` |
+| Windows | `%AppData%\gpget\` |
+| Linux | `~/.config/gpget/` |
+
+---
+
 ## When something goes wrong
 
 **The camera is not found**
 
 ```bash
-gpget probe        # shows the interface and IP it found, camera/info, and whether media/list responds
+gpget probe        # what it found: the network and IP, the camera's info, and whether the file list loads
 ```
 
 - **Check that the cable carries data.** With a charge-only cable the camera says
@@ -469,32 +435,11 @@ gpget probe        # shows the interface and IP it found, camera/info, and wheth
 - Check that the camera is powered on
 - `gpget --ip <addr>` lets you point at it directly
 
-**No notification ever appears (macOS)**
-
-```bash
-"$HOME/Applications/gpget.app/Contents/MacOS/gpget" autostart test-notify
-```
-
-Run the copy inside the bundle, not the one on your PATH — only that one can
-post as gpget. It prints what macOS itself reports about the permission, so you
-do not have to guess:
-
-```
-authorizationStatus  2   (2 = allowed)
-alertSetting         2   (2 = enabled)
-alertStyle           1   (1 = banner)
-```
-
-If those look right and you still see nothing, check whether **your screen is
-being recorded or shared** — macOS suppresses banners then, and the setting for
-it is at the bottom of System Settings > Notifications.
-
 **A Docker or VPN address collides**
 
 The camera shows up in the `172.16`–`172.31` private range, and Docker bridges and
-VPNs sometimes use the same range. gpget confirms each candidate by asking
-`camera/info` whether it is a GoPro, but if several still qualify, name the right
-one with `--ip`.
+VPNs sometimes use the same range. gpget checks each candidate is actually a GoPro
+before using it, but if more than one qualifies, name the right one with `--ip`.
 
 **The destination is rejected**
 
@@ -509,6 +454,52 @@ gpget sync         # run it again and it resumes
 ```
 
 gpget never deletes a `.part` on its own. Use `--clean` when you want them gone.
+
+### Autostart on macOS
+
+**No notification ever appears**
+
+Three things cause this, in rough order of likelihood.
+
+**1. The permission banner was missed.** It disappears after about a minute, and
+letting it expire counts as a refusal — macOS will not ask again. Turn gpget on
+by hand:
+
+```
+System Settings > Notifications > gpget
+```
+
+**2. Your screen is being recorded or shared.** macOS treats screen recording
+(QuickTime Player, any capture app) the same as sharing your display and
+**suppresses banners** so they cannot end up in the recording. gpget looks
+broken: the notification is delivered and lands in Notification Center, but
+nothing appears. Turn on **System Settings > Notifications > Allow notifications
+when mirroring or sharing the display** — the bottom section, off by default.
+
+**3. Something else.** Ask macOS directly:
+
+```bash
+"$HOME/Applications/gpget.app/Contents/MacOS/gpget" autostart test-notify
+```
+
+Run the copy inside the bundle, not the one on your PATH — only that one can
+post as gpget. It prints what macOS itself reports, so you do not have to guess:
+
+```
+authorizationStatus  2   (2 = allowed)
+alertSetting         2   (2 = enabled)
+alertStyle           1   (1 = banner)
+```
+
+**Autostart stops working after an update**
+
+Updating gpget changes its code signature, and macOS can treat the new signature
+as a different app. Usually the agent retries and recovers on its own — the log
+(`gpget autostart log`) shows the retries.
+
+More rarely, System Settings > Local Network ends up with several entries of the
+same name, all switched on, and connections keep being refused anyway.
+**gpget cannot prevent or repair that**; recovering from it needs Recovery mode.
 
 ---
 
