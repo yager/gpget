@@ -455,6 +455,15 @@ gpget sync         # run it again and it resumes
 
 gpget never deletes a `.part` on its own. Use `--clean` when you want them gone.
 
+**GoPro Labs**
+
+With Labs **Altered File Naming** (basename) enabled, listing and offloading over
+USB may fail. Labs itself says renamed files are for **direct SD-card copies
+only** — not USB transfer, Quik, or the cloud. There are reports that returning
+to stock firmware restored `gpget list` / `sync`. gpget talks to the camera over
+the Open GoPro HTTP API (USB network). If you have renamed files with Labs,
+switch back to the default naming, or copy from the card with a reader.
+
 ### Autostart on macOS
 
 **No notification ever appears**
