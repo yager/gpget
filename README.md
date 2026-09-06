@@ -108,8 +108,10 @@ try it, please report what happened in
 
 ### Updating
 
-Run the same `curl` command again. It overwrites the binary in place; nothing
-else needs uninstalling.
+Re-download the binary for your platform — it overwrites in place. Your
+configuration is not touched (`gpget config path` prints where it lives).
+
+#### macOS
 
 ```bash
 curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-darwin-arm64
@@ -117,26 +119,42 @@ chmod +x ~/bin/gpget
 gpget version
 ```
 
-Use the URL for your platform, exactly as in the install step above. On Windows,
-replace `gpget.exe` the same way you first downloaded it.
-
-**If you use autostart, re-run the install afterwards:**
+#### Linux
 
 ```bash
+curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-linux-amd64
+chmod +x ~/bin/gpget
+gpget version
+```
+
+On aarch64, change `gpget-linux-amd64` to `gpget-linux-arm64`.
+
+#### Windows (PowerShell)
+
+```powershell
+curl.exe -L -o "$env:USERPROFILE\bin\gpget.exe" https://github.com/yager/gpget/releases/latest/download/gpget-windows-amd64.exe
+gpget version
+```
+
+If the download fails with the file in use, the every-minute autostart task is
+holding `gpget.exe` — run `gpget autostart uninstall` first, then re-download.
+
+#### If you use autostart
+
+Re-run the install afterwards, on any OS:
+
+```
 gpget autostart install
 ```
 
 gpget copies itself into the thing that actually runs on connect, so that copy
-has to be refreshed. It usually notices an update on its own and rebuilds, but
-re-running `install` is the only way to be sure — and after an update that moves
-or renames anything, it is required. `gpget autostart status` prints the copy
-currently in use and tells you when it is not where this version puts it.
+has to be refreshed. It usually notices an update on its own, but re-running
+`install` is the only way to be sure — and after an update that moves or renames
+anything, it is required. `gpget autostart status` prints the copy currently in
+use.
 
-Your configuration is not touched by an update. It lives outside the binary
-(`gpget config path` prints where).
-
-Nothing else is version-pinned: the `curl` URLs above always fetch the newest
-release, so there is no version number to bump anywhere.
+The `curl` URLs always fetch the newest release, so there is no version number to
+bump anywhere.
 
 ### Uninstalling
 
@@ -361,6 +379,13 @@ question, but it is one:
 - **The banner disappears after 60 seconds, and letting it expire is recorded as
   a refusal.** macOS will not ask again
 
+**Recording your screen?** macOS treats screen recording the same as sharing
+your display and **silently suppresses banners** so they cannot leak into the
+recording. gpget will look broken: the notification is delivered, lands in
+Notification Center, and nothing appears on screen. Turn on **System Settings >
+Notifications > Allow notifications when mirroring or sharing the display** (the
+bottom section, off by default) before you record.
+
 If you miss it, turn gpget on by hand in **System Settings > Notifications >
 gpget**. `gpget autostart install` ends by sending a test notification and tells
 you whether it really went through, so you can tell the difference between
@@ -443,6 +468,26 @@ gpget probe        # shows the interface and IP it found, camera/info, and wheth
   "USB connected" while the computer sees nothing
 - Check that the camera is powered on
 - `gpget --ip <addr>` lets you point at it directly
+
+**No notification ever appears (macOS)**
+
+```bash
+"$HOME/Applications/gpget.app/Contents/MacOS/gpget" autostart test-notify
+```
+
+Run the copy inside the bundle, not the one on your PATH — only that one can
+post as gpget. It prints what macOS itself reports about the permission, so you
+do not have to guess:
+
+```
+authorizationStatus  2   (2 = allowed)
+alertSetting         2   (2 = enabled)
+alertStyle           1   (1 = banner)
+```
+
+If those look right and you still see nothing, check whether **your screen is
+being recorded or shared** — macOS suppresses banners then, and the setting for
+it is at the bottom of System Settings > Notifications.
 
 **A Docker or VPN address collides**
 

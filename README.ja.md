@@ -104,8 +104,10 @@ Go 1.21 以降が必要です。macOS では cgo(通知と USB 監視)を使う�
 
 ### アップデート
 
-**インストールと同じ `curl` コマンドをもう一度実行するだけです。**
-バイナリが上書きされます。事前のアンインストールは要りません。
+お使いの環境のバイナリをもう一度ダウンロードするだけです(その場で上書きされます)。
+設定は触られません(場所は `gpget config path`)。
+
+#### macOS
 
 ```bash
 curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-darwin-arm64
@@ -113,25 +115,40 @@ chmod +x ~/bin/gpget
 gpget version
 ```
 
-URL は上のインストール手順と同じものを、お使いの環境に合わせて選んでください。
-Windows は最初にダウンロードしたのと同じ方法で `gpget.exe` を置き換えます。
-
-**自動起動を使っている場合は、そのあと install をやり直してください:**
+#### Linux
 
 ```bash
+curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-linux-amd64
+chmod +x ~/bin/gpget
+gpget version
+```
+
+aarch64 は `gpget-linux-amd64` を `gpget-linux-arm64` に変えてください。
+
+#### Windows(PowerShell)
+
+```powershell
+curl.exe -L -o "$env:USERPROFILE\bin\gpget.exe" https://github.com/yager/gpget/releases/latest/download/gpget-windows-amd64.exe
+gpget version
+```
+
+「使用中で上書きできない」と出たら、毎分動く自動起動タスクが `gpget.exe` を掴んでいます。
+先に `gpget autostart uninstall` を実行してからダウンロードし直してください。
+
+#### 自動起動を使っている場合
+
+どの OS でも、アップデート後に install をやり直してください:
+
+```
 gpget autostart install
 ```
 
-gpget は「接続時に実際に動くもの」の中に自分自身をコピーしているので、
-そのコピーを作り直す必要があります。更新を自動検出して作り直す仕組みは入っていますが、
-確実なのは `install` のやり直しだけです。**置き場所や名前が変わる更新では必須です。**
-`gpget autostart status` は現在使われているコピーの場所を表示し、
-それがこのバージョンの置き場所と違う場合はその旨も出します。
+gpget は「接続時に実際に動くもの」の中に自分自身をコピーしているので、そのコピーを
+作り直す必要があります。更新を自動検出して作り直す仕組みは入っていますが、確実なのは
+`install` のやり直しだけで、置き場所や名前が変わる更新では必須です。
+`gpget autostart status` は現在使われているコピーの場所を表示します。
 
-設定はアップデートで触りません。バイナリの外にあります(場所は `gpget config path`)。
-
-バージョンを固定している箇所はありません。上の `curl` の URL は常に最新リリースを
-取りに行くので、どこかの番号を書き換える必要はありません。
+`curl` の URL は常に最新リリースを取りに行くので、どこかの番号を書き換える必要はありません。
 
 ### アンインストール
 
@@ -338,6 +355,12 @@ launchd から起動されたバックグラウンドプロセスは、「ロー
 - **バナー本体をクリックすると設定画面が開くだけで、許可したことにはならない**
 - **60 秒で消え、放置すると「拒否」として記録される。**以後 macOS は二度と聞いてこない
 
+**画面を収録している場合は注意。**macOS は画面収録をディスプレイの共有と同じ扱いにし、
+**収録に写り込まないようバナーを黙って抑制する。**gpget が壊れているように見えるが、
+通知は配信されていて通知センターには入っている。画面に出ないだけ。収録するなら先に
+**システム設定 > 通知 > 「ディスプレイをミラーリングまたは共有しているときに通知を許可」**
+(一番下、既定 OFF)を ON にする。
+
 見逃したら **システム設定 > 通知 > gpget** を手で ON にする。
 `gpget autostart install` は最後にテスト通知を送り、**それが本当に通ったかを表示する**
 ので、「許可されている」と「黙って無効」を取り違えずに済む。
@@ -405,6 +428,24 @@ gpget probe        # 見つかった IF / IP、camera/info、media/list の到�
 - **ケーブルがデータ転送に対応しているか。**充電専用ケーブルだと、カメラ側に「USB 接続済み」と出ても PC からは見えない
 - カメラの電源が入っているか
 - `gpget --ip <addr>` で直接指定できる
+
+**通知が一度も出ない(macOS)**
+
+```bash
+"$HOME/Applications/gpget.app/Contents/MacOS/gpget" autostart test-notify
+```
+
+PATH の `gpget` ではなく**バンドルの中のコピー**を実行すること。gpget 名義で
+通知を出せるのはそれだけ。macOS 自身が申告する設定値が出るので、推測しなくて済む。
+
+```
+authorizationStatus  2   (2 = 許可)
+alertSetting         2   (2 = 有効)
+alertStyle           1   (1 = バナー)
+```
+
+これらが正常なのに何も見えないときは、**画面を収録・共有していないか**を確認する。
+その間 macOS はバナーを抑制する。設定はシステム設定 > 通知 の一番下。
 
 **Docker や VPN と IP が衝突する**
 
