@@ -112,9 +112,26 @@ cp dist/gpget-darwin-arm64 ~/bin/gpget       # または PATH の通った場所
 gpget version
 gpget probe                                   # カメラを繋いだ状態で
 gpget status
-gpget autostart install                       # "A test notification was sent" が出て、
-                                              # 実際にバナーが出ることを目視確認
+gpget autostart install                       # 下の注記を参照
 ```
+
+**通知の確認は目視に頼らないこと。**`install` の最後の行が
+「A test notification was sent」なら `UserNotifications` を通っている。
+そうでなければ許可が無いか、バンドルの外から実行している。さらに確かめるなら:
+
+```bash
+"$HOME/Applications/gpget.app/Contents/MacOS/gpget" autostart test-notify
+```
+
+macOS 自身が申告する設定値が出る(`authorizationStatus 2 / alertSetting 2 /
+alertStyle 1` が正常)。画面に本当に出たかは、管理者アカウントで:
+
+```bash
+log show --last 2m --info --predicate 'subsystem == "com.apple.unc"' | grep -i "gpget" | grep "displaying as banner"
+```
+
+**画面収録しながら確認しないこと。**macOS は収録中バナーを抑制する
+(`docs/design.md` 参照)。収録したまま確かめて「通知が出ない」と誤診した事例がある。
 
 Windows / Linux は手元に環境が無ければここでは確認できません。
 **テスターに渡す前提なら `docs/testing.md`(英語) / `docs/testing.ja.md`(日本語) を一緒に渡します。**

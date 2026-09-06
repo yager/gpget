@@ -1,6 +1,6 @@
 # 実装ステータス
 
-最終更新: 2026-09-05 / 実機 ILS(FW H26.03.03.00.00)で検証
+最終更新: 2026-09-06 / 実機 ILS(FW H26.03.03.00.00)で検証
 
 ## Phase 5: autostart(2026-09-05)
 
@@ -8,7 +8,9 @@
 |---|---|
 | `autostart install / uninstall / status / print` | 実装済み。`status` は保存先ロックを見て転送中かを出す |
 | `autostart log [--follow]` | 実装済み。末尾は現行と `.old` を横断。1MB で `.old` に1世代 |
-| `autostart run`(トリガーが叩く本体)| 実装済み。接続の署名を状態ファイルに記録して多重発火を抑制。macOS はランチャーと worker で状態ファイルを分ける。`mode=auto` はファイル単位をログに残し、進捗通知を同じバナーで差し替える |
+| `autostart run`(接続時に走る本体)| 実装済み。接続の署名を状態ファイルに記録して多重発火を抑制。`mode=auto` はファイル単位をログに残し、進捗通知を同じバナーで差し替える |
+| `autostart agent`(macOS の常駐本体)| 実装済み。IOKit の USB 接続通知を待つ。ポーリングなし |
+| `autostart test-notify` | 実装済み。macOS では `UNNotificationSettings` の全項目も出力する(通知が出ないときの切り分け用) |
 
 **macOS は他 OS と挙動が違う。** バックグラウンドの LaunchAgent は macOS の
 「ローカルネットワーク」プライバシーでローカル 172.x への接続を無音で拒否され、
@@ -16,18 +18,23 @@
 nettest で実証)。トグルを ON にしても launchd コンテキストには効かない。
 原因は**裸の実行ファイルに「アプリの身元」(バンドル identity)が無い**こと。
 
-→ macOS では 2 段構えにする。LaunchAgent は**ネットワークに一切触れず**、
-`net.Interfaces()` で GoPro 形状の口(172.16-31/24)が生えたかだけを見る。検出したら
-`~/Applications/gpget.app` の中の実行ファイルを launchd が常駐させ、そちらが実際に転送する。
-このバンドルは `gpget autostart install` が組み立てて ad-hoc 署名するもので、
-中身は gpget のバイナリそのもの。`LSUIElement` 指定なので**ウィンドウも Dock アイコンも
-出ない**。詳細と、実装して分かった落とし穴 4 点は `docs/design.md` の
-「macOS の .app バンドルについて」を参照。
+→ macOS では、`gpget autostart install` が `~/Applications/gpget.app` に
+ad-hoc 署名したバンドルを組み立て、**その中の実行ファイルを launchd が常駐させる**。
+中身は gpget のバイナリそのもの。バンドルの身元があるので通信が許可される。
+`LSUIElement` 指定なので**ウィンドウも Dock アイコンも出ない**。常駐プロセスは
+IOKit の USB 接続通知を待つだけで、**ポーリングはしない**。
+
+**置き場所が `~/Applications` なのは通知のため。**Launch Services が走査しない場所
+(以前は `~/Library/Application Support`)に置くと、`usernoted` がバンドルを検証できず、
+**許可プロンプトを一度も出さないまま拒否**され、その拒否が永続化する
+(2026-09-06 に使い捨てバンドル 13 本で実測)。
+
+詳細と、実装して分かった落とし穴は `docs/design.md` を参照。
 
 | OS | 機構 | 状態 |
 |---|---|---|
 | macOS | LaunchAgent で `gpget.app` 内の実行ファイルを常駐(IOKit の USB 通知で反応、ポーリングなし)→ 転送 / 通知 | **実機検証済み(2026-09-05)**。接続検出 → バンドル起動 → カメラ到達 → `mode=auto` で 106 件 / 401.8M を無音転送 → 完了通知。ウィンドウは一切出ない。通知は `UserNotifications` で gpget 名義(`authorizationStatus=2`)。進捗差し替えと `gpget autostart log` も同日実機で確認 |
-| Windows | Scheduled Task(1分間隔ポーリング、`autostart run` が直接転送/通知)| 実装済み・**未検証**。`--print` で PowerShell を出力、手動登録可 |
+| Windows | Scheduled Task(1分間隔ポーリング、`autostart run` が直接転送/通知)| 実装済み・**実機未検証**。2026-09-06 に「登録できたと出るのに登録されていない」報告があり修正済み(タスク XML を直接渡す方式へ変更、登録後に存在確認)。修正自体は実機で確認できていない |
 | Linux | systemd user timer(1分間隔ポーリング、`autostart run` が直接転送/通知)| 実装済み・**未検証**。`--print` で unit を出力、手動登録可 |
 
 - Win/Linux はプライバシーゲートが無いので `autostart run` が自分で `media/list` を叩き、
@@ -35,6 +42,21 @@ nettest で実証)。トグルを ON にしても launchd コンテキストに�
   無ければ stderr)で知らせる。`mode = auto` は転送 + 進捗通知 + ファイルログ
 - ログ確認は `gpget autostart log`。転送中かは `gpget autostart status`
 - Win/Linux はイベント駆動(デバイス到着トリガー / udev)を将来対応。現状はポーリング
+
+## 2026-09-06 の修正
+
+- **通知の許可が一度も求められない問題を修正**。`.app` を `~/Applications` へ移した。
+  詳細は上の表と `docs/design.md`
+- **`install` がテスト通知の結果について嘘をついていたのを修正**。osascript への
+  フォールバック(macOS がほぼ握りつぶす経路)でも「送信しました」と表示していた
+- **Windows の autostart 登録が無言で失敗するのを修正**(実機未検証)
+- **`autostart status` が、実際に使われている `.app` の場所を出すように**。
+  更新で移動したのに古い場所を指したままだと、転送は動くのに通知だけ出せない
+- `autostart test-notify` が `UNNotificationSettings` を出力するように
+
+**gpget のバグではなかったもの**: 「許可済みなのに自動実行の通知が出ない」という
+症状を追ったが、原因は QuickTime での画面収録だった。macOS は画面収録を
+ディスプレイの共有として扱い、バナーを抑制する。`docs/design.md` に記録あり
 
 ## 2026-09-05 の修正
 
