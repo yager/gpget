@@ -379,6 +379,65 @@ log stream --style compact --level debug --predicate 'process == "usernoted"'
 ことの徴候で、`granted=NO ... not allowed` の即時失敗(= バナーが出ていない)とは
 原因が違う。ログを見るときはこの 2 つを混同しないこと。
 
+### 画面収録中はバナーが出ない(2026-09-06 実測、gpget 側の問題ではない)
+
+新規アカウントでの検証中、**許可済みなのに自動実行の通知が一度も表示されない**
+という症状が出た。gpget 側は 5 回とも送信に成功しており(`[notify:UserNotifications]`)、
+macOS も受理していたが、表示段階で止めていた。
+
+```
+usernoted:          Presenting <com.gpget.gpget ...> as banner
+NotificationCenter: <id> (com.gpget.gpget) muted by display state
+NotificationCenter: addOrUpdate ... canDisplayWhileCenterIsClosed: false,
+                    visibility: [history, alert, muted, lockscreen, ...]
+```
+
+**原因は QuickTime Player での画面収録だった。** macOS は画面収録を
+「ディスプレイの共有」として扱い、収録に写り込まないよう通知バナーを抑制する。
+`donotdisturbd` のログにそのまま出る:
+
+```
+Determined whether sharing / mirroring preferences should adjust event behavior; shouldAdjust=1
+Resolution modified to accomodate auxiliary state; isScreenMirrored=0 isScreenShared=1 ...
+```
+
+`isScreenShared=1` が出ていたのは収録していた 6 分間だけで、収録なしで撮り直すと
+`displaying as banner` が出て正常に表示された。設定
+(**システム設定 > 通知 > ディスプレイをミラーリングまたは共有しているときに通知を許可**、
+既定 OFF)を ON にすれば、収録中でも表示され、収録にも写る(実機確認済み)。
+
+**この症状は gpget からは検出できない。** `UNNotificationSettings` は
+`authorizationStatus=2 / alertSetting=2 / alertStyle=1(banner)` と正常値を返す。
+公開 API に「いま画面共有で抑制されている」を知る手段が無いので、**ドキュメントで
+先に伝えるしかない**(`docs/testing.md` に記載)。テスターが手順を録画しながら試すのは
+自然な行動なので、放置すると「通知が出ない」という誤報告が繰り返し上がる。
+
+### 通知まわりの切り分け手順
+
+推測に頼らないための手順。**目視は使わない。**
+
+1. `gpget autostart test-notify` を **バンドル内のコピー**で実行する。
+   macOS 自身が申告する `UNNotificationSettings` 全項目が出る(`internal/notify` の
+   `Settings()`)。正常なら `authorizationStatus 2 / alertSetting 2 / alertStyle 1`
+2. システムログを見る。**管理者アカウントから引くこと**
+   (一般ユーザーでは `log show: Could not open local log store: Operation not permitted`)。
+   統一ログはシステム全体で共有されるので、別アカウントの事象も管理者側から追える
+
+   ```
+   log show --start "<時刻>" --info --predicate 'subsystem == "com.apple.unc"' | grep -i gpget
+   ```
+
+   - `Presenting <askpermissions ...> as alert` … 許可要求が出た
+   - `LSApplicationRecord failed to find` … Launch Services 未登録(前節)
+   - `muted by display state` … 表示が抑制された。次を見る
+
+   ```
+   log show --start "<時刻>" --info --predicate 'subsystem == "com.apple.donotdisturb"' | grep -i "Resolution modified"
+   ```
+
+   - `isScreenShared=1` … 画面収録 / 共有中
+3. `displaying as banner` が出ていれば、実際に画面に出ている
+
 ### 自動起動は常駐エージェント + IOKit 通知(2026-09-05)
 
 **ポーリングをやめ、USB 接続イベントで即座に反応する常駐型にした。**

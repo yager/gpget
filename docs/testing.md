@@ -116,6 +116,17 @@ back in.**
   goes to the log
 - macOS: it should react within a second or two, not a minute
 
+**Recording your screen? Turn one setting on first.** macOS treats screen
+recording (QuickTime Player, `screencapture`, any capture app) the same as
+sharing your display, and **silently suppresses notification banners** so they
+cannot leak into a recording. The notification is still delivered — it lands in
+Notification Center — but nothing appears on screen, which looks exactly like a
+broken app. If you want to record the test, first turn on
+**System Settings > Notifications > Allow notifications when mirroring or
+sharing the display** (the bottom section, off by default). Measured 2026-09-06:
+with recording on and that setting off, five gpget notifications in a row were
+logged by macOS as "muted by display state" and never shown.
+
 **macOS only — the notification permission is easy to miss.** `install` ends by
 sending a test notification and then says whether it actually went through. If
 it says gpget does not have permission, turn it on in

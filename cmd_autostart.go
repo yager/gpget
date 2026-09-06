@@ -75,6 +75,13 @@ func cmdAutostart(ctx context.Context, args []string) error {
 			fmt.Printf("this binary is not the bundled one, so it cannot post a real notification.\nrun the bundled copy instead:\n  %q autostart test-notify\n",
 				autostartBundleExe())
 		}
+		// macOS decides on its own whether a notification is ever shown, and the
+		// System Settings UI is not always the whole story. Print what the
+		// notification API itself reports, so a failure can be diagnosed from
+		// the output instead of from a screenshot.
+		if s := notify.Settings(); s != "" {
+			fmt.Printf("macOS notification settings:\n%s\n", s)
+		}
 		via := notify.Via("gpget: test notification", "If you can see this, transfer results will reach you too.")
 		// install reads this back; see sendInstallTestNotify.
 		if res := os.Getenv(notifyResultEnv); res != "" {
