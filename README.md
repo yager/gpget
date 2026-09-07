@@ -38,7 +38,7 @@ shoot onto a computer.
 
 | | |
 |---|---|
-| Camera | Verified on the **GoPro MISSION 1 PRO ILS**. Other MISSION 1 models, HERO11–13 and MAX2 should work if they expose the same media list over USB |
+| Camera | **Verified: GoPro MISSION 1 PRO ILS**, plus early user reports on HERO13 Black. Other current GoPros are expected to work — see [Which cameras](#which-cameras) |
 | Connection | A **USB-C cable that carries data** (not a charge-only one) |
 | macOS | Apple Silicon, macOS 15 or newer |
 | Windows | 64-bit, Windows 10 or newer |
@@ -47,6 +47,21 @@ shoot onto a computer.
 
 **You never take the microSD card out.** It also works with a media mod attached,
 as long as the side USB-C port passes data.
+
+### Which cameras
+
+Over the cable, gpget speaks the **Open GoPro HTTP API** — the same media-list
+and file-download requests the camera already answers for GoPro's own software.
+GoPro documents that API as working on **HERO9 through HERO13 Black, HERO11 Black
+Mini, MISSION 1, MISSION 1 PRO, MAX2 and LIT HERO**
+([compatibility list](https://gopro.github.io/OpenGoPro/docs)), so gpget should
+run on any of them.
+
+Tested here: the **MISSION 1 PRO ILS** only. **HERO13 Black** has early reports
+from users. The rest are unconfirmed — if you try one,
+[tell us how it went](https://github.com/yager/gpget/issues). Keep the camera on
+current firmware. LIT HERO turns on USB access a different way and may need
+changes.
 
 ---
 

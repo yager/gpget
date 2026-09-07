@@ -30,7 +30,7 @@ GoPro 公式のツールはスマホアプリと Web のメディアライブラ
 
 | | |
 |---|---|
-| カメラ | **GoPro MISSION 1 PRO ILS** で検証。MISSION 1 系 / HERO11〜13 / MAX2 も、同じメディア一覧を USB で公開していれば動く見込み |
+| カメラ | **検証済み: GoPro MISSION 1 PRO ILS**。ほかに HERO13 Black のユーザー報告あり。他の現行 GoPro も動く見込み — [対応機種](#対応機種)を参照 |
 | 接続 | **USB-C ケーブル**(データ転送対応のもの。充電専用ケーブルは不可) |
 | macOS | Apple Silicon、macOS 15 以降 |
 | Windows | 64bit、Windows 10 以降 |
@@ -38,6 +38,19 @@ GoPro 公式のツールはスマホアプリと Web のメディアライブラ
 | 備考 | **レンズや撮影モードは関係ない**。カメラが記録したものをそのまま吸い出す |
 
 **microSD を抜く必要はありません**。メディアモッドを付けたままでも(側面 USB-C がデータを通せば)動きます。
+
+### 対応機種
+
+gpget は USB ケーブル越しに **Open GoPro HTTP API** を話す。GoPro 公式ソフトが使うのと
+同じ「メディア一覧」「ファイル取得」のリクエストで、カメラが元から応答する。GoPro は
+この API の対応機種を **HERO9〜HERO13 Black / HERO11 Black Mini / MISSION 1 /
+MISSION 1 PRO / MAX2 / LIT HERO** としている
+([対応表](https://gopro.github.io/OpenGoPro/docs))。したがって gpget もこれらで動くはず。
+
+こちらで検証済みなのは **MISSION 1 PRO ILS** のみ。**HERO13 Black** はユーザーからの
+初期報告あり。それ以外は未確認 — 試したら
+[結果を教えてください](https://github.com/yager/gpget/issues)。カメラのファームウェアは
+最新に。LIT HERO は USB の有効化方法が違い、対応に修正が要るかもしれない。
 
 ---
 
