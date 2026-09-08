@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/yager/gpget/internal/gopro"
 )
@@ -464,5 +465,70 @@ func TestSkipKeepsUnknownSizeWhenPresent(t *testing.T) {
 	}
 	if !res.Skipped {
 		t.Fatal("unknown-size file that exists should still skip")
+	}
+}
+
+// stallThenResumeServer answers the first (rangeless) request with the first
+// half of body, then goes silent for stall. A second request carrying a Range
+// header is served as a 206 from that offset.
+func stallThenResumeServer(t *testing.T, body []byte, stall time.Duration) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if rng := r.Header.Get("Range"); rng != "" {
+			var start int64
+			fmt.Sscanf(rng, "bytes=%d-", &start)
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, len(body)-1, len(body)))
+			w.Header().Set("Content-Length", fmt.Sprint(int64(len(body))-start))
+			w.WriteHeader(http.StatusPartialContent)
+			w.Write(body[start:])
+			return
+		}
+		w.Header().Set("Content-Length", fmt.Sprint(len(body)))
+		w.WriteHeader(http.StatusOK)
+		w.Write(body[:len(body)/2])
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		time.Sleep(stall) // the mid-stream freeze
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// A body that goes silent mid-stream must be abandoned at the idle timeout and
+// resumed on a fresh connection -- not waited out. Regression guard for the
+// idleReader wrapping in stream(): without it, copyBody blocks on Read for the
+// whole freeze.
+func TestIdleStallIsCutOffAndResumed(t *testing.T) {
+	restore := idleReadTimeout
+	idleReadTimeout = 150 * time.Millisecond
+	t.Cleanup(func() { idleReadTimeout = restore })
+
+	body := []byte(strings.Repeat("payload!", 4096)) // 32 KiB
+	srv := stallThenResumeServer(t, body, 3*time.Second)
+
+	dir := t.TempDir()
+	final := filepath.Join(dir, "GX010036.MP4")
+	r := baseRequest(final, body)
+	r.Client = gopro.NewClient(srv.URL)
+
+	start := time.Now()
+	res, err := Download(context.Background(), r)
+	elapsed := time.Since(start)
+	if err != nil {
+		t.Fatalf("Download: %v", err)
+	}
+	if got := read(t, final); string(got) != string(body) {
+		t.Fatalf("content mismatch: got %d bytes, want %d", len(got), len(body))
+	}
+	if res.Bytes != int64(len(body)) {
+		t.Errorf("Bytes = %d, want %d", res.Bytes, len(body))
+	}
+	if elapsed > 2*time.Second {
+		t.Errorf("took %v; the stall should have been cut off near %v and resumed",
+			elapsed, idleReadTimeout)
+	}
+	if exists(partPath(final)) {
+		t.Error(".part left behind after a successful transfer")
 	}
 }

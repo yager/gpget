@@ -18,10 +18,7 @@ import (
 // left in place for the user to review.
 var ErrStalePart = errors.New("leftover .part does not match the current media item")
 
-const (
-	maxResumeRetries = 3
-	copyChunk        = 512 << 10
-)
+const copyChunk = 512 << 10
 
 // Request describes one file transfer.
 type Request struct {
@@ -197,8 +194,9 @@ func stream(ctx context.Context, r Request, part string, startAt int64) (written
 		}
 		resumed = resumed || res || startAt > 0
 
-		cerr := copyBody(ctx, f, body, &written, total, r.Progress)
-		body.Close()
+		ir := newIdleReader(body, idleReadTimeout)
+		cerr := copyBody(ctx, f, ir, &written, total, r.Progress)
+		ir.Close()
 
 		if cerr == nil {
 			if err := f.Sync(); err != nil {
@@ -220,7 +218,10 @@ func stream(ctx context.Context, r Request, part string, startAt int64) (written
 		if ctx.Err() != nil {
 			return written, total, resumed, ctx.Err()
 		}
-		// transient? retry with Range from where we are.
+		// Transient -- a dropped connection or an idle-stall we cut off
+		// (errIdleStall). Retry with a fresh Range request from where we are;
+		// on this camera a new connection starts serving within ~30ms even
+		// when the one we just abandoned was frozen in TCP retransmission.
 		if retries >= maxResumeRetries {
 			return written, total, resumed, cerr
 		}
