@@ -1,6 +1,6 @@
 # 実装ステータス
 
-最終更新: 2026-09-06 / 実機 ILS(FW H26.03.03.00.00)で検証
+最終更新: 2026-09-08 / 実機 ILS(FW H26.03.03.00.00)で検証
 
 ## Phase 5: autostart(2026-09-05)
 
@@ -42,6 +42,23 @@ IOKit の USB 接続通知を待つだけで、**ポーリングはしない**�
   無ければ stderr)で知らせる。`mode = auto` は転送 + 進捗通知 + ファイルログ
 - ログ確認は `gpget autostart log`。転送中かは `gpget autostart status`
 - Win/Linux はイベント駆動(デバイス到着トリガー / udev)を将来対応。現状はポーリング
+
+## 2026-09-08 の修正
+
+- **keep-alive の pinger を撤去**(`internal/xfer/keepalive.go` 削除、`gopro.Client.KeepAlive` 削除)。
+  有線 USB では給電中カメラが起きたまま。カメラは HTTP keep-alive 非対応で、
+  1 接続ずつしか捌かず、3 秒ごとの keep_alive は第 2 接続として競合していただけ。
+  詳細と実測は `docs/gopro-api.md` の実測ログ
+- **転送途中の停止対策**:`stream()` の body 読み取りに 15 秒のアイドルデッドライン。
+  無応答なら接続を切って Range 再開(既存の再試行ループを流用)。`maxResumeRetries` 3→6。
+  `GPGET_IDLE_TIMEOUT` / `GPGET_MAX_RESUMES`(秒 / 回数)で調整可
+  - **実運用での効果は未実証。** 決定論テスト(`TestIdleStallIsCutOffAndResumed`:
+    60 秒停止 → 15 秒で見切り、Range 再開)で機構は確認。実機 A/B(インターバル
+    群 before/after、30 フレーム × 8 回 + 330 フレーム × 2 回)では停止を再現できず、
+    健全時は before=after(= 無害は実証)。停止は「ヘビーな録画直後・発熱時に
+    限られる」と推測
+- **`GPGET_TIMING`**:セットすると転送 1 本ごとに `TIMING\t<src>\t<bytes>\t<秒>\t<status>`
+  を stderr へ。停止分析用、既定オフ
 
 ## 2026-09-06 の修正
 
@@ -88,7 +105,7 @@ IOKit の USB 接続通知を待つだけで、**ポーリングはしない**�
 - **Range 再開**:中断した `GPAA0023.JPG` を 1,310,720 バイトから継続 → 5,997,814 で完了、`.part` 残らず
 - **孤児 `.part` の照合**:meta が現在の media 項目と一致しなければ STALE として弾き、`.part` を残す
 - **保存先プリフライト**:`~/Library/CloudStorage/...` を拒否
-- **排他ロック**(`<dest>/.gpget.lock`)、**keep_alive goroutine**(3 秒間隔)、**進捗表示**
+- **排他ロック**(`<dest>/.gpget.lock`)、**進捗表示**
 
 コードを通読して出た穴のうち、この文書の 1–6 と表の一部は 2026-09-05 後半に直した。
 空き容量 0 は満杯として拒否する。`statVolume` 失敗は Windows 未実装のため、従来どおり進む。
