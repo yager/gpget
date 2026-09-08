@@ -37,7 +37,7 @@ func ProcessItems(ctx context.Context, items []Request, start func(Request), don
 		if start != nil {
 			start(it)
 		}
-		res, err := Download(ctx, it)
+		res, err := timedDownload(ctx, it)
 		if done != nil {
 			done(it, res, err)
 		}
