@@ -181,16 +181,15 @@ func runTransfer(ctx context.Context, cl *gopro.Client, cfg config.Config, pl *p
 		}
 	}
 
-	// lock + keep-alive
+	// destination lock. No keep-alive: on wired USB the camera stays awake as
+	// long as it is plugged in, and an active transfer is itself traffic. A
+	// second connection every few seconds only competes with the download on a
+	// camera that serves one request at a time.
 	lk, err := xfer.Acquire(pl.DestRoot)
 	if err != nil {
 		return err
 	}
 	defer lk.Release()
-
-	kaCtx, kaCancel := context.WithCancel(ctx)
-	go xfer.KeepAlive(kaCtx, cl, 3*time.Second)
-	defer kaCancel()
 
 	prog := xfer.NewProgress(len(items), totalBytes, o.quiet)
 	reqs := make([]xfer.Request, 0, len(items))

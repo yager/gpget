@@ -147,11 +147,6 @@ func (c *Client) EnableWiredControl(ctx context.Context) error {
 	return c.hit(ctx, "/gopro/camera/control/wired_usb?p=1")
 }
 
-// KeepAlive sends GET /gopro/camera/keep_alive.
-func (c *Client) KeepAlive(ctx context.Context) error {
-	return c.hit(ctx, "/gopro/camera/keep_alive")
-}
-
 // DateTime is GET /gopro/camera/get_date_time: the camera's wall clock plus its
 // configured timezone offset (minutes) and DST flag.
 type DateTime struct {
