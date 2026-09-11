@@ -324,9 +324,14 @@ have.)
 
 It shows no window and no Dock icon. A compact **menu-bar indicator** shows an
 action-cam icon when idle and a two-line file count while transferring (click
-for Sync Now / Open Destination / Reveal Log; hover for a `gpget — …` tooltip).
-It reacts within a second or two of the cable going in. Deleting the app is safe
-— `gpget autostart install` builds it again.
+for Sync Now / Open Destination / Show Log / About gpget / Quit gpget; hover
+for a `gpget — …` tooltip). It reacts within a second or two of the cable
+going in. Deleting the app is safe — `gpget autostart install` builds it again.
+
+Quitting from the menu (or `gpget autostart pause`) only stops gpget for the
+current login session — it comes back on its own next time you log in.
+`gpget autostart resume` restarts it right away without reinstalling, and
+`gpget autostart uninstall` removes autostart entirely.
 
 #### The first time: allow two permissions
 

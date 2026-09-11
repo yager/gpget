@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -30,6 +31,14 @@ const launchLabel = "com.gpget.autostart"
 // bundleID is the .app bundle identifier. macOS keys local-network permission
 // on this (plus the code signature), so it must stay stable across releases.
 const bundleID = "com.gpget.gpget"
+
+// appIconICNS is written into the bundle as Contents/Resources/AppIcon.icns
+// on every install/rebuild. This is the full-color app icon (Finder, Dock,
+// notification banners) -- unrelated to the monochrome template icon the
+// menu-bar indicator draws itself (internal/indicator/status_darwin.m).
+//
+//go:embed assets/AppIcon.icns
+var appIconICNS []byte
 
 func launchLogPath() string { return autostartLogPath() }
 
@@ -165,6 +174,7 @@ func bundleInfoPlist(ver string) string {
     <key>CFBundleExecutable</key>         <string>gpget</string>
     <key>CFBundlePackageType</key>        <string>APPL</string>
     <key>CFBundleShortVersionString</key> <string>%s</string>
+    <key>CFBundleIconFile</key>           <string>AppIcon.icns</string>
     <key>LSUIElement</key>                <true/>
     <key>NSLocalNetworkUsageDescription</key>
     <string>gpget uses the local network to offload photos and videos from a connected GoPro.</string>
@@ -271,6 +281,13 @@ func writeAutostartBundle(exe string) error {
 		return err
 	}
 	if err := os.WriteFile(filepath.Join(app, "Contents", "Info.plist"), []byte(bundleInfoPlist(binaryVersion(exe))), 0o644); err != nil {
+		return err
+	}
+	resources := filepath.Join(app, "Contents", "Resources")
+	if err := os.MkdirAll(resources, 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(resources, "AppIcon.icns"), appIconICNS, 0o644); err != nil {
 		return err
 	}
 	out, err := exec.Command("codesign", "--force", "--deep", "-s", "-", "--identifier", bundleID, app).CombinedOutput()

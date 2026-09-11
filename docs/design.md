@@ -101,7 +101,7 @@ rclone / gh / croc / syncthing が Go なのと同じ理由。
 | F-12e | **`list` の表示**:`[burst ×30]` / `[timelapse ×20]` / `[interval ×30]`、`ct` が未知なら `[group ×N]` にフォールバックする |
 | F-13 | **チャプターリネーム**:`PPNNNNNN.MP4` を分解(prefix / 末尾4桁=クリップ / 先頭2桁=チャプター)し、`chapter_name` テンプレートで改名してコピー(バイト無改変)。`regroup` = `always` / `multi`(2章以上のみ) / `never`。**`.LRV` は親 MP4 の最終ファイル名幹に `.LRV` を付けた名前**(例 `GX2495_01.MP4` → `GX2495_01.LRV`)。GoPro の `GL` プレフィックス規則はリネーム後は放棄(MP4 の隣に並んでソートされる方を優先) |
 | F-14 | `probe` サブコマンド:発見した IF / IP、`camera/info`、`media/list` 到達可否を表示 |
-| F-15 | **接続時自動起動**(opt-in):`autostart install/uninstall/status/print/run`。**macOS** = LaunchAgent で常駐(`RunAtLoad` + `KeepAlive`)し、IOKit の USB 接続通知で反応する(ポーリングなし)。バックグラウンドの launchd プロセスは macOS の Local Network プライバシーでローカル 172.x への接続を無音拒否され許可プロンプトも出せない(裸の実行ファイルにはバンドル identity が無いため)。そこで `autostart install` は `~/Applications/gpget.app` に自前の `.app` バンドルを組み立てて ad-hoc 署名し、その中の実行ファイルを launchd から常駐させる(配布物は単一バイナリのまま)。バンドルは `LSUIElement` 指定でウィンドウも Dock アイコンも出さない。`~/Applications` なのは通知の許可のため — Launch Services が走査しない場所に置くと `usernoted` がバンドルを検証できず、許可プロンプトが一度も出ないまま拒否される(2026-09-06 実測)。`mode` は `notify`=件数通知のみ / `auto`=無音で転送し完了 / 失敗を通知。`auto` の進捗はメニューバーのインジケーターに出し、完了/失敗だけ通知する。ファイル単位は `gpget autostart log` に残す。**ウィンドウが無いので失敗は必ず通知する**(黙って終わると成功と区別できない)。**Windows** = Scheduled Task 1分ポーリング、**Linux** = systemd user timer 1分ポーリング。Win/Linux はプライバシーゲートが無いので `autostart run` が自分で `media/list` を数え、config `mode` に従い `notify`(通知のみ)/ `auto`(ヘッドレス `sync`)。新規メディアが無い / カメラ未応答なら静かに終了。同一接続の再発火は状態ファイルで抑制。Win/Linux 通知は `internal/notify`(依存ゼロ、`notify-send`/PowerShell toast、無ければ stderr)。**実装済み: macOS は実機検証済み(2026-09-05、接続検出 → バンドル起動 → 106 件 401.8M の無音転送 → 完了通知、進捗差し替えと `autostart log` も確認)・Win/Linux は未検証(`--print` で手動登録可)** |
+| F-15 | **接続時自動起動**(opt-in):`autostart install/uninstall/pause/resume/status/print/run`。macOS のみ、`pause`/`resume` はセッション限りの一時停止/再開(`launchctl bootout`/`bootstrap`。plist・`.app`・ログは無傷。`install`/`uninstall` の永続登録とは別軸で、`KeepAlive` 付き LaunchAgent はプロセスを殺すだけでは launchd が即再起動してしまうために必要。メニューの Quit gpget もここを呼ぶ)。**macOS** = LaunchAgent で常駐(`RunAtLoad` + `KeepAlive`)し、IOKit の USB 接続通知で反応する(ポーリングなし)。バックグラウンドの launchd プロセスは macOS の Local Network プライバシーでローカル 172.x への接続を無音拒否され許可プロンプトも出せない(裸の実行ファイルにはバンドル identity が無いため)。そこで `autostart install` は `~/Applications/gpget.app` に自前の `.app` バンドルを組み立てて ad-hoc 署名し、その中の実行ファイルを launchd から常駐させる(配布物は単一バイナリのまま)。バンドルは `LSUIElement` 指定でウィンドウも Dock アイコンも出さない。`~/Applications` なのは通知の許可のため — Launch Services が走査しない場所に置くと `usernoted` がバンドルを検証できず、許可プロンプトが一度も出ないまま拒否される(2026-09-06 実測)。`mode` は `notify`=件数通知のみ / `auto`=無音で転送し完了 / 失敗を通知。`auto` の進捗はメニューバーのインジケーターに出し、完了/失敗だけ通知する。ファイル単位は `gpget autostart log` に残す。**ウィンドウが無いので失敗は必ず通知する**(黙って終わると成功と区別できない)。**Windows** = Scheduled Task 1分ポーリング、**Linux** = systemd user timer 1分ポーリング。Win/Linux はプライバシーゲートが無いので `autostart run` が自分で `media/list` を数え、config `mode` に従い `notify`(通知のみ)/ `auto`(ヘッドレス `sync`)。新規メディアが無い / カメラ未応答なら静かに終了。同一接続の再発火は状態ファイルで抑制。Win/Linux 通知は `internal/notify`(依存ゼロ、`notify-send`/PowerShell toast、無ければ stderr)。**実装済み: macOS は実機検証済み(2026-09-05、接続検出 → バンドル起動 → 106 件 401.8M の無音転送 → 完了通知、進捗差し替えと `autostart log` も確認)・Win/Linux は未検証(`--print` で手動登録可)** |
 | F-16 | **やらない。** 手動 `sync`/`get` は TTY 進捗で足りる。自動起動の事後確認は `gpget autostart log`(F-15)。汎用の転送ログは持たない |
 | F-17 | **排他ロック**:`sync` / `get` は保存先ごとのロックファイル(`<dest>/.gpget.lock`、PID + 開始時刻)を取ってから走る。既にロックがあれば起動しない(autostart の `auto` と手動実行が同じ `.part` を触る事故を防ぐ)。stale ロック(PID 消滅)は自動で奪う |
 | F-18 | **進捗表示**:ファイル単位(転送済 / 合計・%・速度・ETA)と全体(N/M ファイル・合計 GB)を出す。TTY なら 1 行を更新、非 TTY なら行ごと。`--quiet` で抑制、`--json` で機械可読 |
@@ -197,8 +197,10 @@ macOS が identity を読めるフォルダ構造に置くだけ:
 
 ```
 gpget.app/Contents/
-├── Info.plist        CFBundleIdentifier / LSUIElement / NSLocalNetworkUsageDescription
-└── MacOS/gpget       バイナリのコピー
+├── Info.plist              CFBundleIdentifier / LSUIElement / NSLocalNetworkUsageDescription / CFBundleIconFile
+├── MacOS/gpget             バイナリのコピー
+└── Resources/AppIcon.icns  正式なアプリアイコン(Finder / About / 通知バナー用。
+                            メニューバーの白黒テンプレートアイコンとは別物)
 ```
 
 **配布物は単一バイナリのまま。**`gpget autostart install` が

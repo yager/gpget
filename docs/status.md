@@ -52,6 +52,25 @@ IOKit の USB 接続通知を待つだけで、**ポーリングはしない**�
   メニューから Sync Now / Open Destination / Reveal Log
 - **進捗バナーを廃止**: `mode=auto` の差し替え通知(10件/15秒)をやめ、完了・失敗・
   接続エラーだけ `UserNotifications`。Win/Linux も同様(トレイは未着手)
+- **メニューバーが無反応だった根本原因を修正**: `internal/usbwatch` が素の
+  `CFRunLoopRun()` で回していて `[NSApp run]` を一度も呼んでいなかったため、
+  ホバー・クリック・⌘ドラッグが全滅していた(見た目は正常に描画されるので気付きにくい)。
+  `watch_darwin.m` で `[NSApp run]`(未初期化時は従来どおり `CFRunLoopRun()`)に変更
+- **メニューを再編**: About gpget / Quit gpget を追加、Reveal Log → Show Log。
+  `gpget autostart pause` / `resume` を新設(セッション限りの一時停止・再開。
+  `install` / `uninstall` の永続登録とは別軸。Karabiner-Elements の
+  `unregister-*-agent` 方式を参考に、`KeepAlive` 付き LaunchAgent は
+  bootout しないと停止できないことを確認した上で設計)
+- **正式なアプリアイコンを追加**(`assets/AppIcon.icns`、`Info.plist` に
+  `CFBundleIconFile`)。メニューバーの白黒テンプレートアイコンとは別物で、
+  Finder / About パネル / 通知バナーで使われる
+  - **既知の落とし穴**: 通知センター(`usernoted` / `UserNotificationCenter.app`)は
+    アプリのアイコンを Finder/`NSWorkspace` とは別に独自キャッシュしている。
+    このアイコン追加より前に一度でも gpget の通知を受け取ったことがある環境では、
+    `.icns` を更新しても通知バナーだけ古い(無地の)アイコンのまま固定される。
+    直すには `killall usernoted` (`UserNotificationCenter` も道連れで再起動される)
+    か、Mac の再起動が必要。オープンベータ中の既知の制限として記録のみ、
+    表立った案内はしない
 
 ## 2026-09-08 の修正
 

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="screenGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1c1f24"/>
+      <stop offset="100%" stop-color="#0b0c0e"/>
+    </linearGradient>
+    <radialGradient id="screenSheen" cx="50%" cy="0%" r="90%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- background: full-bleed rounded square, no outer bezel -->
+  <g id="background">
+    <rect x="0" y="0" width="1024" height="1024" rx="200" ry="200" fill="url(#screenGrad)"/>
+    <rect x="0" y="0" width="1024" height="1024" rx="200" ry="200" fill="url(#screenSheen)"/>
+  </g>
+
+  <!-- guides: alignment help only. delete this group before exporting art -->
+  <g id="guides-delete-before-export" opacity="0.35" fill="none" stroke="#ff5a33" stroke-width="2" stroke-dasharray="10 10">
+    <line x1="512" y1="0" x2="512" y2="1024"/>
+    <line x1="0" y1="512" x2="1024" y2="512"/>
+    <!-- suggested safe area for the wordmark: centered, about 62 percent of the canvas width -->
+    <rect x="205" y="386" width="614" height="252" rx="16"/>
+  </g>
+</svg>

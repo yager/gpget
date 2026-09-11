@@ -297,9 +297,14 @@ gpget autostart install --print   # 登録せず、登録内容だけ出力す�
 
 ウィンドウも Dock アイコンも出ない。代わりに**メニューバーにインジケーター**
 (待機中はアクションカメラ型アイコン、転送中は件数の2段表示。ホバーで
-`gpget — …`、クリックで Sync Now・保存先・ログ)を出す。
-ケーブルを挿してから 1〜2 秒で反応する。アプリを消しても安全で、
-`gpget autostart install` で作り直せる。
+`gpget — …`、クリックで Sync Now / 保存先を開く / ログを見る / About gpget /
+Quit gpget)を出す。ケーブルを挿してから 1〜2 秒で反応する。アプリを消しても
+安全で、`gpget autostart install` で作り直せる。
+
+メニューの Quit gpget(または `gpget autostart pause`)は**今のログインセッ
+ションだけ**止めるもので、次回ログインすれば自動的に戻る。`gpget autostart
+resume` なら再インストールなしですぐ再開できる。自動起動そのものをやめる
+には `gpget autostart uninstall` を使う。
 
 #### 初回だけ、許可を 2 つ出す
 
@@ -321,7 +326,8 @@ gpget autostart install --print   # 登録せず、登録内容だけ出力す�
 - `auto` では**メニューバーのインジケーター**が、待機中はアクションカメラ型アイコン、
   転送中は件数の2段表示を出す。デスクトップ通知は**完了と失敗**(および接続エラー)
   だけ。ファイル単位はログへ
-- ホバーで `gpget — …` のツールチップ。クリックで Sync Now・保存先・ログ
+- ホバーで `gpget — …` のツールチップ。クリックで Sync Now / 保存先 / ログ /
+  About gpget / Quit gpget
 - **失敗も必ず通知する**。ウィンドウが無いので、黙って終わると成功と区別できない
 
 ### Windows / Linux — バックグラウンドで完結
