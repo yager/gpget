@@ -82,7 +82,7 @@ There is no runtime to install.
 
 ```bash
 mkdir -p ~/bin
-curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-darwin-arm64
+curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-macos-apple-silicon
 chmod +x ~/bin/gpget
 echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
 gpget version
@@ -402,7 +402,7 @@ untouched.
 #### macOS
 
 ```bash
-curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-darwin-arm64
+curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-macos-apple-silicon
 chmod +x ~/bin/gpget
 gpget version
 ```

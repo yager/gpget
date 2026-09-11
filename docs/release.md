@@ -4,7 +4,7 @@
 
 | 成果物 | 対象 | 備考 |
 |---|---|---|
-| `gpget-darwin-arm64` | macOS 15 以降 / Apple Silicon | cgo 必須 |
+| `gpget-macos-apple-silicon` | macOS 15 以降 / Apple Silicon | cgo 必須 |
 | `gpget-windows-amd64.exe` | Windows 10 以降 / x64 | ARM は x64 エミュレーションで動作 |
 | `gpget-linux-amd64` | Linux / x86_64 | 完全静的 |
 | `gpget-linux-arm64` | Linux / aarch64(Raspberry Pi 等) | 完全静的 |
@@ -108,7 +108,7 @@ git tag v0.1.0
 最低限、**自分の Mac で**新しいバイナリを入れて一通り動かします。
 
 ```bash
-cp dist/gpget-darwin-arm64 ~/bin/gpget       # または PATH の通った場所
+cp dist/gpget-macos-apple-silicon ~/bin/gpget       # または PATH の通った場所
 gpget version
 gpget probe                                   # カメラを繋いだ状態で
 gpget status
@@ -145,7 +145,7 @@ git push origin main
 git push origin v0.1.0
 
 gh release create v0.1.0 \
-  dist/gpget-darwin-arm64 \
+  dist/gpget-macos-apple-silicon \
   dist/gpget-windows-amd64.exe \
   dist/gpget-linux-amd64 \
   dist/gpget-linux-arm64 \

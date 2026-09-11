@@ -70,7 +70,7 @@ jobs:
       - name: build and verify the frameworks are linked
         run: |
           for arch in arm64 amd64; do
-            out=gpget-darwin-$arch
+            out=gpget-macos-$arch
             CGO_ENABLED=1 GOOS=darwin GOARCH=$arch go build -o "$out" .
             for fw in UserNotifications IOKit; do
               if otool -L "$out" | grep -q "/$fw.framework/"; then
@@ -84,7 +84,7 @@ jobs:
       - name: report the runner's deployment target
         run: |
           echo "runner: $(sw_vers -productVersion), SDK $(xcrun --show-sdk-version)"
-          vtool -show-build gpget-darwin-arm64 | grep -E 'minos|sdk' || true
+          vtool -show-build gpget-macos-arm64 | grep -E 'minos|sdk' || true
 
   windows:
     name: test (Windows)

@@ -71,7 +71,7 @@ MISSION 1 PRO / MAX2 / LIT HERO** としている
 
 ```bash
 mkdir -p ~/bin
-curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-darwin-arm64
+curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-macos-apple-silicon
 chmod +x ~/bin/gpget
 echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
 gpget version
@@ -369,7 +369,7 @@ resume` なら再インストールなしですぐ再開できる。自動起動
 #### macOS
 
 ```bash
-curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-darwin-arm64
+curl -L -o ~/bin/gpget https://github.com/yager/gpget/releases/latest/download/gpget-macos-apple-silicon
 chmod +x ~/bin/gpget
 gpget version
 ```

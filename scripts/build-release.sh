@@ -47,7 +47,7 @@ build() {
 # macOS: cgo REQUIRED. Setting GOARCH alone flips CGO_ENABLED to 0, which
 # builds a binary with no UserNotifications and no IOKit -- it installs, runs,
 # and silently never notifies or detects the camera. Always pass CGO_ENABLED=1.
-build darwin  arm64 1 gpget-darwin-arm64
+build darwin  arm64 1 gpget-macos-apple-silicon
 
 # Linux and Windows use no cgo. CGO_ENABLED=0 keeps them fully static, so one
 # Linux binary runs on glibc and musl alike.
@@ -62,10 +62,10 @@ echo "checks:"
 # frameworks rather than trusting that CGO_ENABLED=1 was honoured.
 missing=0
 for fw in UserNotifications IOKit; do
-  if otool -L "$OUT/gpget-darwin-arm64" | grep -q "/$fw.framework/"; then
-    echo "  darwin arm64 links $fw"
+  if otool -L "$OUT/gpget-macos-apple-silicon" | grep -q "/$fw.framework/"; then
+    echo "  macOS (Apple Silicon) links $fw"
   else
-    echo "  ERROR: darwin arm64 does NOT link $fw" >&2
+    echo "  ERROR: macOS (Apple Silicon) does NOT link $fw" >&2
     missing=1
   fi
 done
@@ -73,14 +73,14 @@ done
 
 # Confirm the pin took. A mismatch means the release would demand a different
 # macOS than the docs promise.
-minos=$(vtool -show-build "$OUT/gpget-darwin-arm64" 2>/dev/null | awk '/minos/{print $2}')
-echo "  darwin arm64 requires macOS $minos or newer"
+minos=$(vtool -show-build "$OUT/gpget-macos-apple-silicon" 2>/dev/null | awk '/minos/{print $2}')
+echo "  macOS (Apple Silicon) requires macOS $minos or newer"
 if [ "$minos" != "$MACOSX_DEPLOYMENT_TARGET" ]; then
   echo "  ERROR: expected minos $MACOSX_DEPLOYMENT_TARGET, got $minos" >&2
   exit 1
 fi
 
-got=$("$OUT/gpget-darwin-arm64" version)
+got=$("$OUT/gpget-macos-apple-silicon" version)
 echo "  version reports: $got"
 [ "$got" = "gpget $VERSION" ] || { echo "  ERROR: version stamp missing" >&2; exit 1; }
 
