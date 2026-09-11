@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/img/gpget-logo.png" alt="gpget" width="120">
+</p>
+
 # gpget
 
 [English](README.md) | **日本語**
