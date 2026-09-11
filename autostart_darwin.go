@@ -12,12 +12,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/yager/gpget/internal/config"
 	"github.com/yager/gpget/internal/gopro"
+	"github.com/yager/gpget/internal/indicator"
 	"github.com/yager/gpget/internal/notify"
 	"github.com/yager/gpget/internal/usbwatch"
 )
@@ -302,7 +305,7 @@ func autostartArtifact(exe string) string {
         <string>%s</string>
     </array>
     <key>ProcessType</key>
-    <string>Background</string>
+    <string>Interactive</string>
     <key>LowPriorityIO</key>
     <true/>
     <key>StandardOutPath</key>
@@ -327,26 +330,38 @@ func platformAutostartRun(_ context.Context, _ string) (bool, error) {
 // startup for a camera that is already plugged in.
 //
 // It must run from inside the .app bundle -- that is what makes the camera
-// reachable at all (see docs/design.md).
+// reachable at all (see docs/design.md). The menu-bar indicator lives here too:
+// the same process already owns the run loop, and LSUIElement keeps it out of
+// the Dock.
 func autostartAgent(parent context.Context, cfgPath string) error {
+	// AppKit's NSStatusItem must live on the process's main OS thread. Pin this
+	// goroutine before anything else so usbwatch's CFRunLoop and the indicator
+	// share that thread. (Go may otherwise migrate us off main after main().)
+	runtime.LockOSThread()
+
 	autostartInAgent = true
 	autostartRedirectLog()
 	logf("gpget agent: watching USB (vendor 0x%04x)", goproUSBVendorID)
 
 	var busy sync.Mutex
-	attach := func() {
-		logf("gpget agent: GoPro detected")
+	runOnce := func(reason string) {
+		logf("gpget agent: %s", reason)
 		if autostartSelfHeal() {
 			logf("gpget agent: restarting")
 			os.Exit(0) // KeepAlive relaunches us from the rebuilt bundle
 		}
 		go func() {
-			// Serialise: a replug during a transfer must not start a second one.
-			busy.Lock()
+			// Serialise: a replug or Sync Now during a transfer must not start a
+			// second one.
+			if !busy.TryLock() {
+				logf("gpget agent: already transferring — ignoring %s", reason)
+				return
+			}
 			defer busy.Unlock()
 
 			if cands := waitForInterfaces(ifaceWait); len(cands) == 0 {
 				logf("gpget agent: the network interface never came up")
+				indicator.SetMessage("camera USB seen, no network")
 				notify.Send("gpget: cannot see the camera",
 					"The USB device appeared, but no network connection was established.")
 				return
@@ -357,6 +372,7 @@ func autostartAgent(parent context.Context, cfgPath string) error {
 			// anywhere from 3 to 10 seconds in, so a short count gives false
 			// alarms (it did, on 2026-09-05).
 			deadline := time.Now().Add(reachRetryFor)
+			indicator.SetMessage("connecting…")
 			for attempt := 1; ; attempt++ {
 				err := autostartRun(parent, cfgPath)
 				if err == nil {
@@ -364,6 +380,7 @@ func autostartAgent(parent context.Context, cfgPath string) error {
 				}
 				if !errors.Is(err, errCameraUnreachable) {
 					logf("gpget agent: %v", err)
+					indicator.SetIdle("")
 					return
 				}
 				if time.Now().After(deadline) {
@@ -373,13 +390,36 @@ func autostartAgent(parent context.Context, cfgPath string) error {
 				logf("gpget agent: could not reach the camera (attempt %d) — retrying", attempt)
 				time.Sleep(3 * time.Second)
 			}
+			indicator.SetIdle("could not reach camera")
 			notify.Send("gpget: cannot connect to the camera",
 				"Check that local network access is allowed in System Settings > Privacy & Security > Local Network.")
 		}()
 	}
+
+	indicator.SetHooks(indicator.Hooks{
+		SyncNow: func() { runOnce("Sync Now") },
+		DestDir: func() string {
+			cfg, err := config.Load(cfgPath)
+			if err != nil {
+				return ""
+			}
+			dest, err := cfg.ExpandDest()
+			if err != nil {
+				return ""
+			}
+			return dest
+		},
+		LogPath: autostartLogPath(),
+		Quit:    func() { _ = autostartPause() },
+	})
+	indicator.Start()
+	indicator.SetIdle("")
+
+	attach := func() { runOnce("GoPro detected") }
 	detach := func() {
 		logf("gpget agent: GoPro disconnected")
 		os.Remove(autostartStatePath())
+		indicator.SetIdle("camera disconnected")
 	}
 	return usbwatch.Run(goproUSBVendorID, attach, detach)
 }
@@ -419,6 +459,7 @@ func autostartInstall(exe string) (string, error) {
 	ok := sendInstallTestNotify()
 	return fmt.Sprintf(`LaunchAgent installed: %s
 Offloading starts the moment you plug the camera in (resident, no window).
+A menu-bar item shows progress while a transfer runs.
 
 macOS asks for two permissions, and the notification one is easy to miss:
 
@@ -481,6 +522,45 @@ func launchctlBootout(domain string) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+}
+
+// autostartPause stops the resident agent for this login session only: it
+// unloads the launchd job (which kills the running process, including
+// whichever instance is handling the "Quit gpget" menu click) but leaves the
+// plist, the installed .app, and all state/log files untouched. Because the
+// plist keeps RunAtLoad, launchd brings gpget back automatically next login.
+//
+// This mirrors Karabiner-Elements, not Dropbox/Google Drive: Dropbox/Drive
+// run as a plain Login Item with nothing supervising them mid-session, so
+// their "Quit" is just a process exit. gpget (like Karabiner's
+// KeepAlive-backed agents) has launchd actively relaunching a dead process
+// within the same session, so "quit" has to unregister the job or it would
+// reappear in seconds -- confirmed against Karabiner's own docs, whose
+// "Quit" is implemented as a set of `unregister-*-agent` calls, the same
+// shape as this bootout. Kept as a separate verb (pause/resume) from
+// install/uninstall so the CLI can't be misread as toggling the permanent
+// autostart registration. Use autostartUninstall for that instead.
+func autostartPause() error {
+	domain := "gui/" + strconv.Itoa(os.Getuid())
+	launchctlBootout(domain)
+	return nil
+}
+
+// autostartResume reverses autostartPause: it reloads the existing plist and
+// kicks the job, without touching the .app, state, or logs. Unlike
+// Karabiner-Elements (whose docs only describe reopening the app to get back
+// to a registered state), this stays as cheap as pausing.
+func autostartResume() error {
+	p := launchAgentPath()
+	if _, err := os.Stat(p); err != nil {
+		return fmt.Errorf("no LaunchAgent plist at %s -- run `gpget autostart install` first", p)
+	}
+	domain := "gui/" + strconv.Itoa(os.Getuid())
+	if out, err := exec.Command("launchctl", "bootstrap", domain, p).CombinedOutput(); err != nil {
+		return fmt.Errorf("launchctl bootstrap: %v: %s", err, string(out))
+	}
+	_ = exec.Command("launchctl", "kickstart", domain+"/"+launchLabel).Run()
+	return nil
 }
 
 func autostartUninstall() error {

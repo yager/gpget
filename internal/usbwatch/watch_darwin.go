@@ -5,7 +5,7 @@
 package usbwatch
 
 /*
-#cgo LDFLAGS: -framework IOKit -framework CoreFoundation
+#cgo LDFLAGS: -framework IOKit -framework CoreFoundation -framework AppKit
 int gpgetWatchUSB(int vendorID);
 */
 import "C"

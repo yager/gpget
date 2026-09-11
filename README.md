@@ -322,9 +322,11 @@ notifications need an *app* for macOS to grant permission to; a plain
 command-line binary cannot receive it. It is built from the gpget you already
 have.)
 
-It shows no window, no Dock icon and no menu bar item, and reacts within a second
-or two of the cable going in. Deleting the app is safe — `gpget autostart
-install` builds it again.
+It shows no window and no Dock icon. A compact **menu-bar indicator** shows an
+action-cam icon when idle and a two-line file count while transferring (click
+for Sync Now / Open Destination / Reveal Log; hover for a `gpget — …` tooltip).
+It reacts within a second or two of the cable going in. Deleting the app is safe
+— `gpget autostart install` builds it again.
 
 #### The first time: allow two permissions
 
@@ -346,8 +348,10 @@ off". If it says gpget does not have permission, see
 - Notifications come from gpget itself, so it shows up as "gpget" in
   System Settings > Notifications. **No Homebrew package or other extra install
   is needed**
-- In `auto` mode the progress notification replaces itself as it goes (roughly
-  every 10 files or 15 seconds); per-file lines go to the log
+- In `auto` mode a **menu-bar indicator** shows an action-cam icon when idle and
+  a compact two-line file count while transferring; desktop notifications fire
+  only for **complete** and **fail** (and for connection errors). Per-file lines
+  still go to the log
 - **Failures are always notified.** With no window, finishing quietly would be
   indistinguishable from success
 

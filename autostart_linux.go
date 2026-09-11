@@ -96,6 +96,19 @@ func autostartInstall(exe string) (string, error) {
 	return "systemd user timer enabled (" + filepath.Join(userUnitDir(), sysdTimer) + ", every minute)\nLog: gpget autostart log  (" + autostartLogPath() + ")", nil
 }
 
+// autostartPause and autostartResume have no Linux equivalent yet: the
+// systemd *timer* here wakes gpget for microseconds once a minute rather
+// than keeping a resident process (see the comment above
+// sysdService/sysdTimer), so there is no running agent -- and no menu-bar UI
+// -- to pause or resume for just this session.
+func autostartPause() error {
+	return errors.New("pause is not meaningful on Linux: gpget only runs briefly on a timer here, not as a resident process — use `gpget autostart uninstall` to turn autostart off entirely")
+}
+
+func autostartResume() error {
+	return errors.New("resume is not meaningful on Linux: gpget only runs briefly on a timer here, not as a resident process")
+}
+
 func autostartUninstall() error {
 	if _, err := exec.LookPath("systemctl"); err == nil {
 		_ = exec.Command("systemctl", "--user", "disable", "--now", sysdTimer).Run()

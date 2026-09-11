@@ -2,8 +2,9 @@ package notify
 
 import "time"
 
-// TransferID is the replace-key for a live autostart transfer. Start, progress
-// pulses, and the final 完了/失敗 all share it so the banner stays one card.
+// TransferID is the replace-key historically used for a live autostart
+// transfer banner. Progress now goes to the menu-bar indicator; complete/fail
+// use Send. Kept so older call sites and tests still compile.
 const TransferID = "gpget-xfer"
 
 const (
@@ -12,8 +13,7 @@ const (
 )
 
 // ShouldPulse reports whether a progress banner should be refreshed.
-// The opening 0/N card and the final 完了/失敗 are sent by the caller;
-// this only covers the in-between updates.
+// Autostart no longer pulses; retained for unit tests of the old throttle.
 func ShouldPulse(done, total, lastDone int, since time.Duration) bool {
 	if done <= 0 || total <= 0 || done >= total {
 		return false
@@ -24,7 +24,8 @@ func ShouldPulse(done, total, lastDone int, since time.Duration) bool {
 	return since >= PulseEvery
 }
 
-// Pulser throttles progress notifications. Nil-safe.
+// Pulser throttles progress notifications. Nil-safe. Unused by autostart after
+// the menu-bar indicator landed; kept for callers that still want banners.
 type Pulser struct {
 	id    string
 	total int

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 )
@@ -37,6 +38,13 @@ run "gpget <command> -h" for command flags.
 var version = "dev"
 
 func main() {
+	// The macOS agent owns an NSStatusItem. AppKit requires the process main
+	// thread; LockOSThread here (before any other Go work can migrate us) so
+	// the indicator and CFRunLoop share that thread for the process lifetime.
+	if len(os.Args) >= 3 && os.Args[1] == "autostart" && os.Args[2] == "agent" {
+		runtime.LockOSThread()
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

@@ -1,5 +1,6 @@
 //go:build darwin
 
+#import <AppKit/AppKit.h>
 #include <IOKit/IOKitLib.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <stdio.h>
@@ -45,6 +46,18 @@ static CFMutableDictionaryRef deviceMatch(int vendorID) {
 
 // gpgetWatchUSB blocks forever, calling into Go when a matching USB device
 // arrives or leaves. Returns 0 only if setup failed.
+//
+// The blocking call matters: if the indicator package has already created an
+// NSApplication (menu-bar agent mode), we must pump it with [NSApp run]
+// rather than a bare CFRunLoopRun(). AppKit can still create and draw a
+// window (NSStatusItem included) without its event loop ever running --
+// windows are ordered onto the screen directly -- but mouse clicks, hover
+// tracking and Cmd-drag reordering are all delivered through NSApplication's
+// own event dispatch, which only starts once something pumps it (normally
+// -run). A plain CFRunLoopRun() drains our IOKit source fine but never touches
+// that dispatch, so the status item renders yet is completely inert. [NSApp
+// run] pumps NSDefaultRunLoopMode, the same mode constant as
+// kCFRunLoopDefaultMode used below, so the IOKit source still fires.
 int gpgetWatchUSB(int vendorID) {
     IONotificationPortRef port = IONotificationPortCreate(kIOMainPortDefault);
     if (!port) return 0;
@@ -71,6 +84,10 @@ int gpgetWatchUSB(int vendorID) {
     }
     detachedCB(NULL, removedIter);
 
-    CFRunLoopRun();
+    if (NSApp != nil) {
+        [NSApp run];
+    } else {
+        CFRunLoopRun();
+    }
     return 1;
 }

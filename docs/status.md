@@ -1,6 +1,6 @@
 # 実装ステータス
 
-最終更新: 2026-09-08 / 実機 ILS(FW H26.03.03.00.00)で検証
+最終更新: 2026-09-11 / 実機 ILS(FW H26.03.03.00.00)で検証
 
 ## Phase 5: autostart(2026-09-05)
 
@@ -8,8 +8,8 @@
 |---|---|
 | `autostart install / uninstall / status / print` | 実装済み。`status` は保存先ロックを見て転送中かを出す |
 | `autostart log [--follow]` | 実装済み。末尾は現行と `.old` を横断。1MB で `.old` に1世代 |
-| `autostart run`(接続時に走る本体)| 実装済み。接続の署名を状態ファイルに記録して多重発火を抑制。`mode=auto` はファイル単位をログに残し、進捗通知を同じバナーで差し替える |
-| `autostart agent`(macOS の常駐本体)| 実装済み。IOKit の USB 接続通知を待つ。ポーリングなし |
+| `autostart run`(接続時に走る本体)| 実装済み。接続の署名を状態ファイルに記録して多重発火を抑制。`mode=auto` はファイル単位をログに残し、**完了/失敗だけ**通知(進捗はメニューバー) |
+| `autostart agent`(macOS の常駐本体)| 実装済み。IOKit の USB 接続通知を待つ。ポーリングなし。**メニューバーインジケーター**(アクションカメラ型アイコン / 転送中は件数2段、Sync Now 等。ツールチップは `statusItem.menu` を使わず自前ポップアップで確保) |
 | `autostart test-notify` | 実装済み。macOS では `UNNotificationSettings` の全項目も出力する(通知が出ないときの切り分け用) |
 
 **macOS は他 OS と挙動が違う。** バックグラウンドの LaunchAgent は macOS の
@@ -21,7 +21,9 @@ nettest で実証)。トグルを ON にしても launchd コンテキストに�
 → macOS では、`gpget autostart install` が `~/Applications/gpget.app` に
 ad-hoc 署名したバンドルを組み立て、**その中の実行ファイルを launchd が常駐させる**。
 中身は gpget のバイナリそのもの。バンドルの身元があるので通信が許可される。
-`LSUIElement` 指定なので**ウィンドウも Dock アイコンも出ない**。常駐プロセスは
+`LSUIElement` 指定なので**ウィンドウも Dock アイコンも出ない**。代わりに
+**メニューバーに `gpget` / `↓N/M` のインジケーター**を出し、進捗はそこに載せる
+(通知バナーは完了・失敗・接続エラー用)。常駐プロセスは
 IOKit の USB 接続通知を待つだけで、**ポーリングはしない**。
 
 **置き場所が `~/Applications` なのは通知のため**。Launch Services が走査しない場所
@@ -33,15 +35,23 @@ IOKit の USB 接続通知を待つだけで、**ポーリングはしない**�
 
 | OS | 機構 | 状態 |
 |---|---|---|
-| macOS | LaunchAgent で `gpget.app` 内の実行ファイルを常駐(IOKit の USB 通知で反応、ポーリングなし)→ 転送 / 通知 | **実機検証済み(2026-09-05)**。接続検出 → バンドル起動 → カメラ到達 → `mode=auto` で 106 件 / 401.8M を無音転送 → 完了通知。ウィンドウは一切出ない。通知は `UserNotifications` で gpget 名義(`authorizationStatus=2`)。進捗差し替えと `gpget autostart log` も同日実機で確認 |
+| macOS | LaunchAgent で `gpget.app` 内の実行ファイルを常駐(IOKit の USB 通知で反応、ポーリングなし)→ 転送 / 通知 | **実機検証済み(2026-09-05)**。接続検出 → バンドル起動 → カメラ到達 → `mode=auto` で 106 件 / 401.8M を無音転送 → 完了通知。ウィンドウは一切出ない。通知は `UserNotifications` で gpget 名義(`authorizationStatus=2`)。`gpget autostart log` も同日実機で確認。**2026-09-11: 進捗はメニューバーへ移し、バナーは完了/失敗のみ**(進捗差し替え通知は廃止) |
 | Windows | Scheduled Task(1分間隔ポーリング、`autostart run` が直接転送/通知)| 実装済み・**実機未検証**。2026-09-06 に「登録できたと出るのに登録されていない」報告があり修正済み(タスク XML を直接渡す方式へ変更、登録後に存在確認)。修正自体は実機で確認できていない |
 | Linux | systemd user timer(1分間隔ポーリング、`autostart run` が直接転送/通知)| 実装済み・**未検証**。`--print` で unit を出力、手動登録可 |
 
 - Win/Linux はプライバシーゲートが無いので `autostart run` が自分で `media/list` を叩き、
   未取得件数を数えて `internal/notify`(Linux=`notify-send`、Win=PowerShell トースト、
-  無ければ stderr)で知らせる。`mode = auto` は転送 + 進捗通知 + ファイルログ
+  無ければ stderr)で知らせる。`mode = auto` は転送 + 完了/失敗通知 + ファイルログ
+  (macOS はメニューバーで進捗表示)
 - ログ確認は `gpget autostart log`。転送中かは `gpget autostart status`
 - Win/Linux はイベント駆動(デバイス到着トリガー / udev)を将来対応。現状はポーリング
+
+## 2026-09-11 の修正
+
+- **進捗をメニューバーへ**: macOS agent が `NSStatusItem` を出し、転送中は `↓N/M`。
+  メニューから Sync Now / Open Destination / Reveal Log
+- **進捗バナーを廃止**: `mode=auto` の差し替え通知(10件/15秒)をやめ、完了・失敗・
+  接続エラーだけ `UserNotifications`。Win/Linux も同様(トレイは未着手)
 
 ## 2026-09-08 の修正
 

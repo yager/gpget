@@ -13,6 +13,7 @@ import (
 
 	"github.com/yager/gpget/internal/config"
 	"github.com/yager/gpget/internal/gopro"
+	"github.com/yager/gpget/internal/indicator"
 	"github.com/yager/gpget/internal/notify"
 	"github.com/yager/gpget/internal/plan"
 	"github.com/yager/gpget/internal/xfer"
@@ -60,6 +61,22 @@ func cmdAutostart(ctx context.Context, args []string) error {
 			return err
 		}
 		fmt.Println("Autostart removed.")
+		return nil
+
+	case "pause":
+		if err := autostartPause(); err != nil {
+			return err
+		}
+		fmt.Println("gpget stopped for this login session.")
+		fmt.Println("It starts again automatically next time you log in, or right away with: gpget autostart resume")
+		fmt.Println("To remove autostart entirely instead, run: gpget autostart uninstall")
+		return nil
+
+	case "resume":
+		if err := autostartResume(); err != nil {
+			return err
+		}
+		fmt.Println("gpget is running again.")
 		return nil
 
 	case "agent":
@@ -117,8 +134,23 @@ func cmdAutostart(ctx context.Context, args []string) error {
 	case "log":
 		return autostartShowLog(ctx, *follow)
 
+	case "icon-preview":
+		{
+			dir := "scratch/indicator-preview"
+			if len(rest) > 1 && rest[1] != "" {
+				dir = rest[1]
+			}
+			if err := indicator.WritePreview(dir); err != nil {
+				return err
+			}
+			abs, _ := filepath.Abs(dir)
+			fmt.Printf("wrote indicator preview PNGs to %s\n", abs)
+			fmt.Println("open idle_8x.png / progress_12_847_8x.png to review (no menu-bar reinstall needed)")
+			return nil
+		}
+
 	default:
-		return fmt.Errorf("unknown autostart subcommand %q (install|uninstall|status|log|print|run|agent|test-notify)", sub)
+		return fmt.Errorf("unknown autostart subcommand %q (install|uninstall|pause|resume|status|log|print|run|agent|test-notify|icon-preview)", sub)
 	}
 }
 
@@ -169,6 +201,7 @@ func autostartRun(parent context.Context, cfgPath string) error {
 	defer cancel()
 
 	if destBusy(cfgPath) {
+		indicator.SetMessage("another transfer is running")
 		return nil
 	}
 
@@ -192,6 +225,7 @@ func autostartRun(parent context.Context, cfgPath string) error {
 			// failure. The caller decides whether to retry or report.
 			return errCameraUnreachable
 		}
+		indicator.SetIdle("")
 		return nil
 	}
 	cam := found[0]
@@ -202,6 +236,7 @@ func autostartRun(parent context.Context, cfgPath string) error {
 	}
 
 	if readState(statePath) == sig {
+		indicator.SetIdle("already handled this connection")
 		return nil // already handled this connection
 	}
 
@@ -210,6 +245,7 @@ func autostartRun(parent context.Context, cfgPath string) error {
 		if autostartTriggered() {
 			notify.Send("gpget: cannot read the config", err.Error())
 		}
+		indicator.SetIdle("config error")
 		return err
 	}
 	cl := gopro.NewClient(cam.CameraIP.String())
@@ -224,6 +260,7 @@ func autostartRun(parent context.Context, cfgPath string) error {
 			notify.Send("gpget: nothing was offloaded",
 				err.Error()+" — try `gpget sync` in a terminal")
 		}
+		indicator.SetIdle("could not list media")
 		return nil
 	}
 
@@ -231,6 +268,7 @@ func autostartRun(parent context.Context, cfgPath string) error {
 	if newFiles == 0 {
 		fmt.Printf("%s  gpget: nothing new to offload\n", time.Now().Format("2006-01-02 15:04:05"))
 		writeState(statePath, sig)
+		indicator.SetIdle("nothing new to offload")
 		return nil
 	}
 
@@ -241,24 +279,27 @@ func autostartRun(parent context.Context, cfgPath string) error {
 	var xferErr error
 	switch cfg.AutostartMode {
 	case "auto":
+		// Progress lives on the menu-bar indicator (macOS agent). Banners are
+		// only for the outcome — mid-transfer replace-pulses felt like spam.
 		off, _ := plan.ParseClockOffset(cfg.Timezone)
-		notify.Pulse(notify.TransferID, "gpget: transferring",
-			fmt.Sprintf("0/%d files (~%s)", newFiles, humanBytes(newBytes)))
-		pulse := notify.NewPulser(notify.TransferID, newFiles)
+		indicator.SetProgress(0, newFiles, body)
 		xferErr = runTransfer(ctx, cl, cfg, pl, transferOpts{
 			yes: true, quiet: false, offset: off,
 			onFile: func(done, total int) {
-				pulse.File(done, "gpget: transferring",
+				indicator.SetProgress(done, total,
 					fmt.Sprintf("%d/%d files (~%s)", done, total, humanBytes(newBytes)))
 			},
 		})
 		if xferErr != nil {
-			notify.Replace(notify.TransferID, "gpget: transfer failed", xferErr.Error())
+			indicator.SetIdle("last transfer failed")
+			notify.Send("gpget: transfer failed", xferErr.Error())
 		} else {
-			notify.Replace(notify.TransferID, "gpget: transfer complete", body)
+			indicator.SetIdle("last sync: " + body)
+			notify.Send("gpget: transfer complete", body)
 		}
 	default: // notify
 		notify.Send("GoPro connected", body+" — run `gpget` to offload")
+		indicator.SetIdle(body + " — waiting for sync")
 	}
 
 	if rememberAutostart(cfg.AutostartMode, xferErr) {

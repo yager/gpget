@@ -172,6 +172,18 @@ func indentBlock(s string) string {
 	return "  " + strings.ReplaceAll(s, "\n", "\n  ")
 }
 
+// autostartPause and autostartResume have no Windows equivalent yet: the
+// Scheduled Task here runs `gpget autostart run` for microseconds once a
+// minute rather than keeping a resident process, so there is no running
+// agent -- and no menu-bar UI -- to pause or resume for just this session.
+func autostartPause() error {
+	return errors.New("pause is not meaningful on Windows: gpget only runs briefly on a scheduled task here, not as a resident process — use `gpget autostart uninstall` to turn autostart off entirely")
+}
+
+func autostartResume() error {
+	return errors.New("resume is not meaningful on Windows: gpget only runs briefly on a scheduled task here, not as a resident process")
+}
+
 func autostartUninstall() error {
 	// Best effort: a missing task is already the desired end state, and the
 	// "not found" message is localized, so there is nothing worth parsing.
